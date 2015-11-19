@@ -3,6 +3,8 @@
 
 ## DynamoDB Tables
 
+The user may change the table prefix, but the default is `whimbrel_`.
+This document refers to the default prefix.
 
 ### `whimbrel_workflow_request`
 
@@ -28,6 +30,8 @@ This table uses a write-once model (no updates).
            with each value being a Number.  `second` can be a float, everything
            else must be an integer.  As this is sent by the client, it should
            be in UTC.
+        * `when_epoc` (Number)
+           Unix epoch time, UTC.
         * `source` (String)
            A description about where the request came from.
         * `manual` (Boolean)
@@ -65,6 +69,8 @@ This table uses a write-once model (no updates).
            with each value being a Number.  `second` can be a float, everything
            else must be an integer.  As this is sent by the client, it should
            be in UTC.
+        * `when_epoc` (Number)
+           Unix epoch time, UTC.
         * `source` (String)
            A description about where the request came from.
         * `manual` (Boolean)
@@ -127,9 +133,13 @@ Lists the execution state of the activities.
     * Additional attributes:
         * `queued_time` (list)
             Defines the time when the activity was scheduled to run.
+        * `queued_time_epoc` (Number)
+            Defines the time when the activity was scheduled to run.
         * `start_time` (list)
             Defines the time when the activity actually started running.
         * `end_time` (list)
+            Defines the time when the activity completed running.
+        * `end_time_epoc` (Number)
             Defines the time when the activity completed running.
         * Additional information about the execution environment.
 
@@ -140,11 +150,13 @@ This table uses a write-once model (no updates).
 
 * `whimbrel_activity_exec_dependency`
     * Primary key type: Hash
+        * `activity_exec_dependency` (String)
+            A concatenation of the `activity_exec_id`, ':', and the dependency index.
+     * Secondary Indicies:
         * `activity_exec_id` (String)
             The activity execution whose dependency this item describes.
-     * Secondary Indicies:
         * `workflow_exec_id` (String)
-        * `dependent_exec_id` (String)
+        * `dependent_activity_exec_id` (String)
 
 
 
