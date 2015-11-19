@@ -2,12 +2,16 @@
 Handles the schema creation and upgrade.
 """
 
-import boto3
+import time
 from ..cfg.config import Config
+from ..util import out
+
+TIMEOUT = [2]
 
 
 def install(config):
     assert isinstance(config, Config)
+    TIMEOUT[0] = config.wait_time
     client = _connect(config)
     db_prefix = config.db_prefix
     existing_tables = _load_tables(client, db_prefix)
@@ -117,6 +121,8 @@ def _load_tables(client, db_prefix):
         the describe_table calls for the matching tables.  However,
         all the table names have the prefix stripped off.
     """
+    out.action("Load Tables", "Discovering existing tables")
+
     args = {}
     tables = []
     has_more = True
@@ -136,6 +142,8 @@ def _load_tables(client, db_prefix):
         response = client.describe_table(TableName=name)
         table = response['Table']
         ret[table['TableName'][len(db_prefix):]] = table
+
+    out.status("OK")
     return ret
 
 
@@ -174,6 +182,9 @@ def _update_table(client, table_name, expected_state, current_state):
     :return:
     """
     assert isinstance(expected_state, dict)
+
+    out.action(table_name, "Checking for upgrade")
+
     current_state = _wait_for_active(client, table_name, current_state)
     if 'Table' in current_state:
         current_state = current_state['Table']
@@ -189,6 +200,10 @@ def _update_table(client, table_name, expected_state, current_state):
     stream_def = current_state['TableDescription']['StreamSpecification']
     # FIXME check stream def
 
+    out.completed()
+
+    # FIXME perform upgrade if necessary
+
     raise NotImplementedError()
 
 
@@ -200,6 +215,7 @@ def _create_table(client, name, desc):
     :param name: full name of the table
     :param desc: DB_TABLES description
     """
+    out.action(name, "Creating table")
 
     indexes = []
     attributes = [
@@ -260,12 +276,13 @@ def _wait_for_active(client, name, last_read_table_def=None):
 
     while True:
         if last_read_table_def is None:
+            out.waiting()
             last_read_table_def = client.describe_table(TableName=name)
 
         if _is_active(last_read_table_def):
             return last_read_table_def
 
-        # FIXME figure out wait command
+        time.sleep(TIMEOUT[0])
 
         last_read_table_def = None
 

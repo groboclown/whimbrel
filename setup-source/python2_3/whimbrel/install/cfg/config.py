@@ -4,6 +4,7 @@ Configuration object
 
 from boto3.session import Session
 
+
 class Config(object):
     def __init__(self):
         object.__init__(self)
@@ -33,6 +34,10 @@ class Config(object):
     def db_local(self):
         return 'dblocal' in self.__params and self.__params['dblocal'] or False
 
+    @property
+    def wait_time(self):
+        return 'wait_seconds' in self.__params and self.__params['wait_seconds'] or 2
+
     def create_boto3_session(self):
         args = {}
 
@@ -41,7 +46,7 @@ class Config(object):
                 key2 = key1
             if key1 in self.__params:
                 args[key2] = self.__params[key1]
-                
+
         put_if('aws_access_key_id')
         put_if('aws_secret_access_key')
         put_if('aws_secret_access_key')

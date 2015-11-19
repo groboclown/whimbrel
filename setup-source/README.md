@@ -10,6 +10,8 @@ you follow the steps described in
 [the boto3 configuration documentation](https://boto3.readthedocs.org/en/latest/guide/quickstart.html#configuration)
 to setup the library to use your AWS credentials.
 
+This does not use the `simple-client-api` codebase.
+
 
 # Configuration
 
