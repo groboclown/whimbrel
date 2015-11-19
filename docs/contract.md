@@ -107,10 +107,23 @@ A client enters these states:
   * `READY` - turn the activity to `READY`.   Should only happen when
     the last of its dependencies enters `COMPLETED` state.
   * `QUEUED` - turn the activity to `QUEUED`.  Should only happen when this
-    is the first activity for the workflow and the e, or if all its dependencies entered
-    `COMPLETED` state.
+    is the first activity for the workflow and the activity has no
+    dependencies.
 * Current state `READY`:
-  * 
+  * `CANCEL` - turn the activity to `CANCELLED`.  Can happen if the
+    user requests a cancellation, or if this activity depends on another
+    one that failed.
+  * `QUEUED` - turn the activity to `QUEUED`.  Happens when another
+    thread or process on the same computer launches, or when the docker
+    container is launched, or a task is requested to run in ECS, and
+    so on. 
+  * `PREPARING` - turn the activity to `PREPARING`.  Should only happen
+    when the actor checking the activity immediately runs the activity,
+    without needing to use a different process to perform the
+    actual execution.
+  * `RUNNING` - turn the activity to `RUNNING`.  Should only happen
+    when the actor checking the activity immediately runs the activity,
+    without going through an environment procurement phase.
 * Current state `QUEUED`:
   * `CANCEL` - turn the activity to `CANCELLED`.
   * `PREPARING` - turn the activity to `PREPARING`.
@@ -154,51 +167,51 @@ Quick notes on how the system should work, designed around docker.
       
 #### Workflow is queued:
 
-  1. workflow table is inserted with initial data.
+1. workflow table is inserted with initial data.
 
 #### Activity is queued:
 
-  1. Activities are added to activity table.  Multiple are
-  added only in the case of parallel jobs.  State is "pending".
-  1. All activities queued (up to a maximum limit) are launched
-  as new docker images specific to that activity.  Those that
-  are queued have their state set to "queued", all others to
-  "pending" when the activity is inserted.  actual docker tasks
-  are launched *after* the values are all inserted.
+1. Activities are added to activity table.  Multiple are
+   added only in the case of parallel jobs.  State is "pending".
+1. All activities queued (up to a maximum limit) are launched
+   as new docker images specific to that activity.  Those that
+   are queued have their state set to "queued", all others to
+   "pending" when the activity is inserted.  actual docker tasks
+   are launched *after* the values are all inserted.
 
 #### Activity is started (run in docker task):
 
-  1. Check the workflow entry to see if it's "running", and
-  stops if it is something else.  Maybe set activity info as well.
-  1. Set activity state to "running" and set the start date.
-  1. Start a heartbeat thread to set the heartbeat date on the
-  object.
+1. Check the workflow entry to see if it's "running", and
+   stops if it is something else.  Maybe set activity info as well.
+1. Set activity state to "running" and set the start date.
+1. Start a heartbeat thread to set the heartbeat date on the
+   object.
 
 #### Activity stops with error (run in docker task):
 
-  1. Caught failures set the workflow state and activity state.
-  Could be done by the wrapping shell script that launched the
-  process.
+1. Caught failures set the workflow state and activity state.
+   Could be done by the wrapping shell script that launched the
+   process.
 
 #### Activity stops successfully (run in docker task):
 
-  1. explicitly decrement the activity counter when the counter is
-  set to the expected value.  If the value is 0, then that means
-  there aren't additional activities in the current parallel
-  runs, and the next activity steps can be run.
-  1. If the count is greater than 0, query for activities that are
-  pending, and set the first activity state to "queued" if the
-  value is "pending"; if that fails, then someone else picked
-  that activity up, so move to the next activity in the list
-  and try again.  If the update was successful, launch a new
-  docker task to run that activity.
+1. explicitly decrement the activity counter when the counter is
+   set to the expected value.  If the value is 0, then that means
+   there aren't additional activities in the current parallel
+   runs, and the next activity steps can be run.
+1. If the count is greater than 0, query for activities that are
+   pending, and set the first activity state to "queued" if the
+   value is "pending"; if that fails, then someone else picked
+   that activity up, so move to the next activity in the list
+   and try again.  If the update was successful, launch a new
+   docker task to run that activity.
 
 #### Heartbeat Listener:
 
-  1. Something that runs at a sheduled interval checks the workflow
-  state.
-  1. For each failed or completed workflow, the activities
-  that are pending will be changed to "never started" (or something).
-  1. For each "running" activity whose heartbeat is too long ago,
-  mark it as "unresponsive" and fail the workflow.
+1. Something that runs at a scheduled interval checks the workflow
+   state.
+1. For each failed or completed workflow, the activities
+   that are pending will be changed to "never started" (or something).
+1. For each "running" activity whose heartbeat is too long ago,
+   mark it as "unresponsive" and fail the workflow.
 

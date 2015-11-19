@@ -16,7 +16,7 @@ To run the provided scripts, the following Linux packages must be installed:
 * **curl** - Used to send AWS commands.
 * **sh** - Designed to use with Ash or other basic shell programs.  Bash is not required.
 
-
+This uses the `whimbrel-client-core` codebase to operate.
 
 
 
