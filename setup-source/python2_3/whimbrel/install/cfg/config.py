@@ -3,56 +3,135 @@ Configuration object
 """
 
 from boto3.session import Session
+import types
+import os
+
+SUPPORTED_MODULES = (
+    # The base module is "core", which everyone gets.
+    "core",
+
+    # Triggers lambda logic using S3 events.
+    "s3_lambdas",
+
+    # Triggers lambda logic using DynamoDB events.
+    "dynamodb_lambdas",
+
+    # Lambda Triggers lookup workflow execution decision logic
+    # through DynamoDB, and call the corresponding lambda function.
+    "workflow_lambdas"
+)
+
+
+def read_config(filename):
+    # FIXME read from a file.  It should be a Python file.
+
+    with open(filename, "r") as f:
+        text = f.read() + "\n"
+    config_compiled = compile(text, filename, "exec", dont_inherit=True)
+    config_module = types.ModuleType(os.path.basename(filename), os.path.basename(filename))
+    categories = {}
+    exec(config_compiled, config_module.__dict__)
+    for name in config_compiled.co_names:
+        categories[name] = getattr(config_module, name)
+    return Config(categories)
+
+
+DEFAULTS = {
+    "aws": {
+        'aws_access_key_id': None,
+        'aws_secret_access_key': None,
+        'region_name': None,
+        'aws_session_token': None,
+        'profile_name': None
+    },
+    'dynamodb': {
+        'wait seconds': 5,
+        'endpoint': None,
+        'use ssl': True
+    },
+    'setup': {
+        'db prefix': 'whimbrel_',
+    },
+    'modules': ['core']
+}
 
 
 class Config(object):
-    def __init__(self):
+    def __init__(self, categories=None):
         object.__init__(self)
-        self.__params = {}
+        self.__params = categories or {}
+        for key, value_dict in DEFAULTS.items():
+            if key not in self.__params:
+                if isinstance(value_dict, dict):
+                    self.__params[key] = dict(value_dict)
+                else:
+                    self.__params[key] = list(value_dict)
+            elif isinstance(value_dict, dict):
+                for key2, val in value_dict.items():
+                    if key2 not in self.__params[key]:
+                        self.__params[key][key2] = val
 
-    def set_aws_region(self, region):
-        assert isinstance(region, str)
-        self.__params['region'] = region
+    def get_category(self, name):
+        if name not in self.__params:
+            self.__params[name] = {}
+        return self.__params[name]
 
-    def set_aws_access_key_id(self, key):
-        assert isinstance(key, str)
-        self.__params['aws_access_key_id'] = key
+    @property
+    def _aws(self):
+        return self.get_category('aws')
 
-    def set_aws_secret_access_key(self, key):
-        assert isinstance(key, str)
-        self.__params['aws_secret_access_key'] = key
+    @property
+    def _dynamodb(self):
+        return self.get_category('dynamodb')
+
+    @property
+    def _setup(self):
+        return self.get_category('setup')
 
     @property
     def db_prefix(self):
-        return 'dbprefix' in self.__params and self.__params['dbprefix'] or 'whimbrel_'
+        return self._setup['db prefix']
 
     def set_db_prefix(self, db_prefix):
         assert isinstance(db_prefix, str)
-        self.__params['db_prefix'] = db_prefix
+        self._setup['db prefix'] = db_prefix
 
     @property
-    def db_local(self):
-        return 'dblocal' in self.__params and self.__params['dblocal'] or False
+    def db_endpoint(self):
+        return self._dynamodb['endpoint']
+
+    def set_db_endpoint(self, db_endpoint):
+        assert isinstance(db_endpoint, str)
+        self._dynamodb['endpoint'] = db_endpoint
 
     @property
-    def wait_time(self):
-        return 'wait_seconds' in self.__params and self.__params['wait_seconds'] or 2
+    def db_use_ssl(self):
+        return self._dynamodb['use ssl']
+
+    @property
+    def db_wait_seconds(self):
+        return self._dynamodb['wait seconds']
+
+    def set_db_wait_seconds(self, val):
+        assert isinstance(val, float) or isinstance(val, int)
+        self._dynamodb['wait seconds'] = val
+
+    @property
+    def modules(self):
+        """
+        List of module names to install.
+
+        :return:
+        """
+        modules = ["core"]
+        if 'modules' in self.__params:
+            for module in self.__params['modules']:
+                if module not in modules and module in SUPPORTED_MODULES:
+                    modules.append(module)
+        return modules
 
     def create_boto3_session(self):
-        args = {}
-
-        def put_if(key1, key2=None):
-            if key2 is None:
-                key2 = key1
-            if key1 in self.__params:
-                args[key2] = self.__params[key1]
-
-        put_if('aws_access_key_id')
-        put_if('aws_secret_access_key')
-        put_if('aws_secret_access_key')
-        put_if('aws_region', 'region_name')
-        put_if('aws_session_token')
-        put_if('aws_profile_name', 'profile_name')
+        args = dict(self._aws)
 
         session = Session(**args)
         return session

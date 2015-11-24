@@ -25,20 +25,39 @@ The workflow execution begins by inserting a single item into the
 
 ### Update Activity State
 
+When an activity runs, it must be aware of its *Activity Exec ID*, which
+uniquely identifies the activity that's running.  This is usually an argument
+passed to the process, but it can also be an evironment variable or contained
+in a file in S3, or any other approach that's suitable to your environment.
+
+There are two ways to go about updating the activity state, either by writing a
+file to a well-defined S3 bucket, or by writing a single record to a DynamoDB
+table.
+
+
+### S3 File Activity State Update
+
+For the S3 file version of the activity state update, the application must write
+a file to a well-defined S3 location.  The file name must be `(activity exec id).state`
+with contents equals to the current state.  When the file is created or updated,
+the Lambda will pick up the change and fire the correct state processing.
+
+
+### DynamoDB Table Activity State Update
+
 For the Simple Lambda API, the API clients only need to send a single
 write to the `whimbrel_activity_event` table, and the registered Lambda functions handle
 the rest of the logic.
 
 The Lambda that initiated a state activity should pass to the execution
-environment the `activity_exec_id`, `activity_name`, `workflow_exec_id`, and
-`workflow_name` so that the event table can be correctly populated.
+environment the `activity_exec_id` so that the event table can be correctly populated.
 
 The insert requires the specification of these attributes:
 
 
 ### Activity Heartbeat
 
-
+*TODO finish*
 
 
 

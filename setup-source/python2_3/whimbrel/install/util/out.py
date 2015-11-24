@@ -10,7 +10,7 @@ DESCRIPTION = {'color': 'white', 'on_color': None, 'attrs': None}
 STATUS = {'color': 'green', 'on_color': None, 'attrs': ['bold']}
 
 MAX_ACTION_LENGTH = 8
-MAX_SUMMARY_LENGTH = 30
+MAX_SUMMARY_LENGTH = 60
 MAX_RESULT_LENGTH = 10
 
 
@@ -37,8 +37,11 @@ def action(name, summary):
 
 
 def status(result):
+    left_padding = ""
+    for i in range(0, MAX_RESULT_LENGTH - min(MAX_RESULT_LENGTH, len(result))):
+        left_padding += " "
     termcolor.outln(
-        termcolor.colored("[", **DECORATION),
+        termcolor.colored(left_padding + "[", **DECORATION),
         termcolor.colored(result[0:MAX_RESULT_LENGTH], **STATUS),
         termcolor.colored("]", **DECORATION))
 
