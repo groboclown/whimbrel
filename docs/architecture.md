@@ -57,7 +57,7 @@ This table uses a write-once model (no updates).
            with each value being a Number.  `second` can be a float, everything
            else must be an integer.  As this is sent by the client, it should
            be in UTC.
-        * `when_epoc` (Number)
+        * `when_epoch` (Number)
            Unix epoch time, UTC.
         * `source` (String)
            A description about where the request came from.
@@ -152,13 +152,13 @@ Lists the execution state of the activities.
             True if the heartbeats are supported for this activity.
         * `queued_time` (list)
             Defines the time when the activity was scheduled to run.
-        * `queued_time_epoc` (Number)
+        * `queued_time_epoch` (Number)
             Defines the time when the activity was scheduled to run.
         * `start_time` (list)
             Defines the time when the activity actually started running.
         * `end_time` (list)
             Defines the time when the activity completed running.
-        * `end_time_epoc` (Number)
+        * `end_time_epoch` (Number)
             Defines the time when the activity completed running.
         * Additional information about the execution environment.
 

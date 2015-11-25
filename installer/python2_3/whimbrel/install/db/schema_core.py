@@ -12,7 +12,7 @@ CORE_DB_TABLES = {
         attributes={
             "source": "S",
             "manual": "B",
-            "when_epoc": "N"
+            "when_epoch": "N"
         },
         extra_columns={
             "when": "L[I,I,I,I,I,I]"
@@ -59,8 +59,8 @@ CORE_DB_TABLES = {
         attributes={
             "activity_name": "S",
             "workflow_name": "S",
-            "queue_time_epoc": "N",
-            "end_time_epoc": "N",
+            "queue_time_epoch": "N",
+            "end_time_epoch": "N",
             "heartbeat_enabled": "B"
         },
         extra_columns={
