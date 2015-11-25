@@ -1,53 +1,70 @@
 #!/bin/sh
 
+# ENV requirements:
+#   AWS_ACCESS_KEY=aws access key
+#   AWS_SECRET_KEY=aws secret key
+#   AWS_REGION=aws region for the request
+# Arguments:
+#   Arg 1: database prefix
+#   Arg 2: DynamoDB endpoint URL (includes http:// or https://, but not trailing slash)
+#   Arg 3: Host to connect to (in url)
+#   Arg 4: workflow name
+#   Arg 5: source
+
+here=`dirname $0`
+if [ ! -f "${here}/core_aws_request.sh" ]; then
+    echo "Not setup right."
+    exit 1
+fi
+
+# Post a request to the dynamodb table.
+
+dbPrefix="$1"
+url="$2"
+host="$3"
+workflow_name="$4"
+source="$5"
+
 # UUID
 # This is Linux specific.
 # FreeBSD should use /compat/linux/proc/sys/kernel/random/uuid
 UUID=`cat /proc/sys/kernel/random/uuid`
+workflow_request_id="${workflow_name}::${UUID}"
 
-if [ -z "$AWS_ACCESS_KEY" -o -z "$AWS_SECRET_KEY" -o -z "$2" -o ! -f "$2" -o -z "$3" -o -z "$4" ]; then
-  exit 1
-fi
+date_epoch=`date -u +%s`
+date_list=`date --date="@$date_epoch" +"[%Y,%-m,%-d,%-H,%-M,%-S]"`
 
-# If the payload is empty, use this content hash
-emptyStringHash="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+method=POST
+targetPrefix=DynamoDB_20120810
+target=${targetPrefix}.PutItem
+jsonVersion=1.0
+header="X-Amz-Target"
+contentType="application/x-amz-json-${jsonVersion}"
+payload_file=/tmp/$$.playload
+echo '{"TableName":"'"${dbPrefix}"'workflow_request","Item":{'\
+    '"workflow_request_id":{"S":"'"${workflow_request_id}"'"},'\
+    '"workflow_name":{"S":"'"${workflow_name}"'"},'\
+    '"when":{"L":'${date_list}'},'\
+    '"when_epoch":{"N":'${date_epoch}'},'\
+    '"source":{"S":"'"${source}"'"}'\
+    '}' > ${payload_file}
 
-# Needs to be configurable
-contentType="text/plain"
+# echo ${here}/core_aws_request.sh \
+#     -s dynamodb \
+#     -r "${method}" \
+#     -p "" \
+#     -f "${payload_file}" \
+#     -c "${contentType}" \
+#     -h "${host}" \
+#     -x "${url}" \
+#     -d "${header}" "${target}"
 
-region="$1"
-srcFile="$2"
-bucket="$3"
-destPath="$4"
-service="s3"
-
-
-payloadHash=`openssl dgst -sha256 ${srcFile} | sed 's/^.* //'`
-
-queryString=""
-canonicalRequest="PUT\n/${destPath}\n${queryString}\nhost;x-amz-content-sha256;x-amz-date;content-type\n${payloadHash}"
-canonicalRequestHash=`echo -en $canonicalRequest | openssl dgst -sha256 | sed 's/^.* //'`
-
-# Iso 8601 basic format
-date8601=`date -I`
-dateScope=`date +%Y%m%d`
-scope="${dateScope}/${region}/${service}/aws4_request"
-stringToSign="AWS4-HMAC-SHA256\n${date8601}\n${scope}\n${canonicalRequestHash}"
-
-# Four-step signing key calculation
-sk_dateKey=`echo -n "${dateScope}" | openssl dgst -sha256 -mac HMAC -macopt key:"AWS4${AWS_SECRET_KEY}" | sed 's/^.* //'`
-sk_dateRegionKey=`echo -n "${region}" | openssl dgst -sha256 -mac HMAC -macopt hexkey:${sk_datekey} | sed 's/^.* //'`
-sk_dateRegionServiceKey=`echo -n ${service} | openssl dgst -sha256 -mac HMAC -macopt hexkey:${sk_dateRegionKey} | sed 's/^.* //'`
-signingKey=`echo -n "aws4_request" | openssl dgst -sha256 -mac HMAC -macopt hexkey:${sk_dateRegionServiceKey} | sed 's/^.* //'`
-
-requestSignature=`openssl dgst -sha256 -mac HMAC -macopt hexkey:${signingKey} ${srcFile} | sed 's/^.* //'`
-
-
-curl -X PUT -T "${srcFile}" \
-  -H "Host: ${bucket}.s3.amazonaws.com" \
-  -H "x-amx-content-sha256: ${payloadHash}" \
-  -H "x-amz-date: ${date8601}" \
-  -H "Content-Type: ${contentType}" \
-  -H "Authorization: AWS4-HMAC-SHA256 Credential=${AWS_ACCESS_KEY}/${scope}, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=${requestSignature}"
-  https://${bucket}.s3.amazonaws.com/${destPath}
-
+exec ${here}/core_aws_request.sh \
+    -s dynamodb \
+    -r "${method}" \
+    -p "" \
+    -f "${payload_file}" \
+    -c "${contentType}" \
+    -h "${host}" \
+    -x "${url}" \
+    -d "${header}" "${target}"

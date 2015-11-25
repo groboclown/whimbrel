@@ -28,6 +28,7 @@
 #       -c (content type)      Content type of the file to upload.  Must be provided only
 #                              if the "-f" parameter is provided.
 #       -h (url host name)     URL host to connect to.
+#       -d (header) (value)    An extra signed header name and value.
 # Exit code:
 #   The curl exit code.  Also, "1" if there was a parameter error.
 
@@ -38,6 +39,9 @@ query_parameters=""
 payload_file=""
 content_type=""
 host=""
+extra_header_name=""
+extra_header_value=""
+url_prefix=""
 debug=0
 
 while [ ! -z "$1" ]; do
@@ -49,6 +53,8 @@ while [ ! -z "$1" ]; do
         "-f") shift; payload_file="$1";;
         "-c") shift; content_type="$1";;
         "-h") shift; host="$1";;
+        "-d") shift; extra_header_name="$1"; shift; extra_header_value="$1";;
+        "-x") shift; url_prefix="$1";;
         "-D") debug=1;;
         "*") echo "$0 invalid invocation"; exit 1;;
     esac
@@ -56,17 +62,23 @@ while [ ! -z "$1" ]; do
 done
 
 # Setup request parameters
-full_url="https://${host}${url_path}"
+if [ -z "${url_prefix}" ]; then
+    full_url="https://${host}${url_path}"
+else
+    full_url="${url_prefix}${url_path}"
+fi
 if [ ! -z "$query_parameters" ]; then
     full_url="${full_url}?${query_parameters}"
 fi
 signed_headers="host;x-amz-content-sha256;x-amz-date"
-date_8601=`date -I`
-date_scope=`date +%Y%m%d --date "$date_8601"`
-scope="${date_scope}/${region}/${service}/aws4_request"
-if [ -f "$payload_file" ]; then
+#date_8601=`date -I`
+date_epoch=`date -u +%s`
+date_8601=`date +"%Y%m%dT%H%M%SZ" --date "@$date_epoch"`
+date_scope=`date +%Y%m%d --date "@$date_epoch"`
+scope="${date_scope}/${AWS_REGION}/${service_name}/aws4_request"
+if [ -f "${payload_file}" ]; then
     payload_hash=`openssl dgst -sha256 "$payload_file" | cut -f 2 -d ' '`
-    if [ -z "$content_type" ]; then
+    if [ -z "${content_type}" ]; then
         echo "$0 must provide -c parameter when -f parameter is given."
         exit 1
     fi
@@ -75,6 +87,12 @@ else
 fi
 # Note trailing newline
 canonical_headers="host:${host}\nx-amz-content-sha256:${payload_hash}\nx-amz-date:${date_8601}\n"
+if [ ! -z "${extra_header_name}" ]; then
+    extra_header_name_lower=`echo -n "${extra_header_name}" | tr A-Z a-z`
+    signed_headers="${signed_headers};${extra_header_name_lower}"
+    # Note trailing newline
+    canonical_headers="${canonical_headers}${extra_header_name_lower}:${extra_header_value}\n"
+fi
 
 if [ ! -z "$content_type" ]; then
     signed_headers="$signed_headers;content-type"
@@ -93,9 +111,9 @@ sk_dateRegionKey=`echo -n "${AWS_REGION}" | openssl dgst -sha256 -mac HMAC -maco
 sk_dateRegionServiceKey=`echo -n ${service_name} | openssl dgst -sha256 -mac HMAC -macopt hexkey:${sk_dateRegionKey} | cut -f 2 -d ' '`
 signing_key=`echo -n "aws4_request" | openssl dgst -sha256 -mac HMAC -macopt hexkey:${sk_dateRegionServiceKey} | cut -f 2 -d ' '`
 
-request_signature=`openssl dgst -sha256 -mac HMAC -macopt hexkey:${signing_key} ${string_to_sign} | cut -f 2 -d ' '`
+request_signature=`echo -n "${string_to_sign}" | openssl dgst -sha256 -mac HMAC -macopt hexkey:${signing_key} | cut -f 2 -d ' '`
 
-if [ $debug ]; then
+if [ $debug = 1 ]; then
     echo "DEBUG:       url request: ${full_url}"
     echo "DEBUG:      request type: ${request_type}"
     echo "DEBUG:    signed headers: ${signed_headers}"
@@ -112,23 +130,37 @@ if [ $debug ]; then
 fi
 
 # Perform the request
-if [ -f "$payload_file" -a "$content_type" ]; then
-    exec curl -X "$request_type" -T "$payload_file" \
-        -v "${full_url}" \
-        -H "Authorization: AWS4-HMAC-SHA256 \
-            Credential=$AWS_ACCESS_KEY/$scope, \
-            SignedHeaders=$signed_headers, \
-            Signature=$request_signature" \
-        -H "x-amz-content-sha256: ${payload_hash}" \
-        -H "x-amz-date: ${date_8601}" \
-        -H "Content-Type: ${content_type}"
+authorization_line="Credential=$AWS_ACCESS_KEY/$scope,SignedHeaders=$signed_headers,Signature=$request_signature"
+if [ -f "$payload_file" -a ! -z "$content_type" ]; then
+    if [ -z "${extra_header_name}" ]; then
+        exec curl -X "$request_type" --data "@${payload_file}" \
+            -v "${full_url}" \
+            -H "Authorization: AWS4-HMAC-SHA256 ${authorization_line}" \
+            -H "x-amz-content-sha256: ${payload_hash}" \
+            -H "x-amz-date: ${date_8601}" \
+            -H "Content-Type: ${content_type}"
+    else
+        exec curl -X "$request_type" --data "@${payload_file}" \
+            -v "${full_url}" \
+            -H "Authorization: AWS4-HMAC-SHA256 ${authorization_line}" \
+            -H "x-amz-content-sha256: ${payload_hash}" \
+            -H "x-amz-date: ${date_8601}" \
+            -H "Content-Type: ${content_type}" \
+            -H "${extra_header_name}: ${extra_header_value}"
+    fi
 else
-    exec curl -X "$request_type" \
-        -v "${full_url}" \
-        -H "Authorization: AWS4-HMAC-SHA256 \
-            Credential=$AWS_ACCESS_KEY/$scope, \
-            SignedHeaders=$signed_headers, \
-            Signature=$request_signature" \
-        -H "x-amz-content-sha256: ${payload_hash}" \
-        -H "x-amz-date: ${date_8601}"
+    if [ -z "${extra_header_name}" ]; then
+        exec curl -X "$request_type" \
+            -v "${full_url}" \
+            -H "Authorization: AWS4-HMAC-SHA256 ${authorization_line}" \
+            -H "x-amz-content-sha256: ${payload_hash}" \
+            -H "x-amz-date: ${date_8601}"
+    else
+        exec curl -X "$request_type" \
+            -v "${full_url}" \
+            -H "Authorization: AWS4-HMAC-SHA256 ${authorization_line}" \
+            -H "x-amz-content-sha256: ${payload_hash}" \
+            -H "x-amz-date: ${date_8601}" \
+            -H "${extra_header_name}: ${extra_header_value}"
+    fi
 fi
