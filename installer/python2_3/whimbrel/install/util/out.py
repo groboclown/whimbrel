@@ -55,7 +55,7 @@ def processing():
 
 
 def completed():
-    termcolor.outln(termcolor.colored(" completed", **STATUS))
+    termcolor.outln(termcolor.colored("!", **STATUS))
 
 
 def out(text):

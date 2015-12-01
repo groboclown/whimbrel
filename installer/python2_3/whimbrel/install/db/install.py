@@ -255,6 +255,8 @@ def _create_table(client, db_prefix, table_name, desc):
         # TODO make this a real type
         raise Exception("invalid response")
 
+    out.status("Created")
+
     _wait_for_active(client, name)
 
     client.put_item(
@@ -280,6 +282,9 @@ def _wait_for_active(client, name, last_read_table_def=None):
     waited = False
     while True:
         if last_read_table_def is None:
+            if not waited:
+                out.action("Waiting", "Waiting for table " + name + " to become active")
+                waited = True
             out.waiting()
             last_read_table_def = client.describe_table(TableName=name)
 
