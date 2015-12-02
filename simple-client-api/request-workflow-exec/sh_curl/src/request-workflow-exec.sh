@@ -40,7 +40,7 @@ target=${targetPrefix}.PutItem
 jsonVersion=1.0
 header="X-Amz-Target"
 contentType="application/x-amz-json-${jsonVersion}"
-payload_file=/tmp/$$.playload
+payload_file=/tmp/$$.payload
 echo '{"TableName":"'"${dbPrefix}"'workflow_request","Item":{'\
     '"workflow_request_id":{"S":"'"${workflow_request_id}"'"},'\
     '"workflow_name":{"S":"'"${workflow_name}"'"},'\
@@ -49,20 +49,11 @@ echo '{"TableName":"'"${dbPrefix}"'workflow_request","Item":{'\
     '"source":{"S":"'"${source}"'"}'\
     '}' > ${payload_file}
 
-# echo ${here}/core_aws_request.sh \
-#     -s dynamodb \
-#     -r "${method}" \
-#     -p "" \
-#     -f "${payload_file}" \
-#     -c "${contentType}" \
-#     -h "${host}" \
-#     -x "${url}" \
-#     -d "${header}" "${target}"
-
-exec ${here}/core_aws_request.sh \
+# NOTE: -D for debug mode
+exec ${here}/core_aws_request.sh -D \
     -s dynamodb \
     -r "${method}" \
-    -p "" \
+    -p "/" \
     -f "${payload_file}" \
     -c "${contentType}" \
     -h "${host}" \
