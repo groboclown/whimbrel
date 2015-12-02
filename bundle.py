@@ -8,6 +8,8 @@ Constructs the basic bundles for use.
 import os
 import sys
 import shutil
+import tempfile
+import stat
 from distutils.dir_util import copy_tree
 
 SIMPLE_JOIN = [
@@ -22,6 +24,37 @@ JOIN = {
     'services/heartbeat-monitor': [],
     'services/web-monitor': []
 }
+CONVERT_FILE_EXT = (".sh", ".py")
+EXEC_FLAG_EXT = (".sh", ".py")
+EXEC_FLAG_NAMES = list()
+
+
+def _copy_to_temp_file_with_fix_line_endings(filename):
+    (src_handle, src_name) = tempfile.mkstemp()
+    try:
+        with open(filename, "rb") as f:
+            os.write(src_handle, f.read().replace("\r\n", "\n"))
+        os.close(src_handle)
+    except:
+        os.close(src_handle)
+        os.unlink(src_name)
+        raise
+    return src_name
+
+
+def fix_line_endings(filename):
+    temp_file = _copy_to_temp_file_with_fix_line_endings(filename)
+    try:
+        shutil.move(temp_file, filename)
+    finally:
+        if os.path.exists(temp_file):
+            os.unlink(temp_file)
+
+
+def set_exec_flag(filename):
+    st = os.stat(filename)
+    os.chmod(filename, st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
 
 if __name__ == '__main__':
     basedir = os.path.dirname(sys.argv[0])
@@ -67,3 +100,14 @@ if __name__ == '__main__':
             out.action("Copy", "Setting up {0}: {1} to {2}".format(join_dir, src_dir, fd_dir))
             copy_tree(src_dir, fd_dir)
             out.status("OK")
+
+    out.action("Fix", "Fixing line endings and exec flags")
+    for (path, dirs, files) in os.walk(export_dir):
+        for f in files:
+            file = os.path.join(path, f)
+            ext = os.path.splitext(f)[1]
+            if ext in CONVERT_FILE_EXT:
+                fix_line_endings(file)
+            if ext in EXEC_FLAG_EXT or f in EXEC_FLAG_NAMES:
+                set_exec_flag(file)
+    out.status("OK")
