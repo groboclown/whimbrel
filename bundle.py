@@ -13,7 +13,8 @@ import stat
 from distutils.dir_util import copy_tree
 
 SIMPLE_JOIN = [
-    'simple-client-api/activity-exec-update',
+    'simple-client-api/activity-update',
+    'simple-client-api/heartbeat',
     'simple-client-api/request-workflow-exec',
     'lambda-source'
 ]
@@ -83,23 +84,19 @@ if __name__ == '__main__':
 
         for core_dir in core_dirs:
             src_dir = os.path.join(basedir, 'whimbrel-client-core', core_dir)
-            out.action("Copy", " -> {0} to {1}".format(src_dir, dest_dir))
             copy_tree(src_dir, dest_dir)
-            out.status("OK")
 
     for join_dir in SIMPLE_JOIN:
         base_dir = os.path.join(basedir, join_dir)
         dest_dir = os.path.join(export_dir, join_dir)
+        out.action("Copy", "Setting up {0}".format(join_dir))
         for f in os.listdir(base_dir):
             src_dir = os.path.join(base_dir, f)
             fd_dir = os.path.join(dest_dir, f)
-            out.action("Copy", "Setting up {0}: {1} to {2}".format(join_dir, src_dir, fd_dir))
             copy_tree(src_dir, fd_dir)
-            out.status("OK")
             src_dir = os.path.join(basedir, 'whimbrel-client-core', f)
-            out.action("Copy", "Setting up {0}: {1} to {2}".format(join_dir, src_dir, fd_dir))
             copy_tree(src_dir, fd_dir)
-            out.status("OK")
+        out.status("OK")
 
     out.action("Fix", "Fixing line endings and exec flags")
     for (path, dirs, files) in os.walk(export_dir):

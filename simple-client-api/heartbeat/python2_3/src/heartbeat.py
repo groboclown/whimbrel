@@ -3,7 +3,6 @@
 from boto3.session import Session
 import sys
 import os
-import uuid
 import time
 
 
@@ -30,7 +29,8 @@ AWS_ARG_MAP = {
 dynamodb_args = {}
 
 db_prefix = 'whimbrel_'
-workflow = None
+activity_exec_id = None
+workflow_exec_id = None
 source = 'Python CLI'
 
 i = 1
@@ -52,37 +52,29 @@ while i < len(sys.argv):
     elif sys.argv[i] == '--prefix':
         i += 1
         db_prefix = sys.argv[i]
-    elif sys.argv[i] == '--workflow':
+    elif sys.argv[i] == '--aei':
         i += 1
-        workflow = sys.argv[i]
-    elif sys.argv[i] == '--source':
+        activity_exec_id = sys.argv[i]
+    elif sys.argv[i] == '--wei':
         i += 1
-        source = sys.argv[i]
+        workflow_exec_id = sys.argv[i]
     i += 1
 
 session = Session(**aws_args)
 db = session.client('dynamodb', **dynamodb_args)
 
-workflow_request_id = workflow + '::' + str(uuid.uuid1())
 when_epoch = int(time.time())
-when_gm = time.gmtime(when_epoch)
-when_list = [
-    {"N": str(when_gm.tm_year)},
-    {"N": str(when_gm.tm_mon)},
-    {"N": str(when_gm.tm_mday)},
-    {"N": str(when_gm.tm_hour)},
-    {"N": str(when_gm.tm_min)},
-    {"N": str(when_gm.tm_sec)}
-]
 
-
-db.put_item(
-    TableName=db_prefix + 'workflow_request',
-    Item={
-        "workflow_request_id": {"S": workflow_request_id},
-        "workflow_name": {"S": workflow},
-        "when": {"L": when_list},
-        "when_epoch": {"N": str(when_epoch)},
-        "source": {"S": source}
+db.update_item(
+    TableName=db_prefix + 'activity_exec',
+    Key={
+        "activity_exec_id": {"S": activity_exec_id},
+        "workflow_exec_id": {"S": workflow_exec_id}
+    },
+    UpdateExpression="SET heartbeat_time_epoch = :epoch",
+    ConditionExpression="attribute_exists(heartbeat_enabled) AND heartbeat_enabled=:true",
+    ExpressionAttributeValues={
+        ":epoch": {"N": str(when_epoch)},
+        ":true": {"BOOL": True}
     }
 )

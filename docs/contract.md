@@ -85,6 +85,19 @@ is inserted to (if necessary).
 
 Finally, the activities requested must be triggered.  See below.
 
+A workflow execution has the following states:
+
+* `REQUESTED` the workflow is initiated, awaiting the activities to be queued.
+* `RUNNING` when the workflow has begin processing.  This happens as soon as
+  an action begins to act upon the workflow.
+* `FAILED_WAITING` if any of the activities finished in such a way that it triggers the
+  workflow to fail, but activities are still running.
+* `FAILED` if the workflow failed, an all the activities are stopped.
+* `CANCEL_REQUESTED` when an external source requests the cancellation of the
+  workflow.
+* `CANCELLED` when the workflow was cancelled, and all the activities are stopped.
+* `COMPLETED` when the activities have all stopped in a way that did not trigger a failure in the
+    workflow.
 
 
 ### Update Activity States and Transitions.
@@ -95,7 +108,7 @@ Full Logic API users must obey them.
 
 #### States
 
-A client enters these states:
+An activity enters these states:
 
 * `REQUESTED` when the activity is noted on first insert into `whimbrel_activity_exec`.
 * `READY` when the dependent activities have completed.
@@ -117,7 +130,7 @@ A client enters these states:
   dependent activities from running.
 * `COMPLETED` when the activity completed running without an error.
 
-#### Transitions
+#### Activity Execution Transitions
 
 * Current state `REQUESTED`:
   * `CANCEL` - turn the activity to `CANCELLED`.  Can happen if the

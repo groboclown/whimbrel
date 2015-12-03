@@ -30,7 +30,8 @@ AWS_ARG_MAP = {
 dynamodb_args = {}
 
 db_prefix = 'whimbrel_'
-workflow = None
+activity_exec_id = None
+transition = None
 source = 'Python CLI'
 
 i = 1
@@ -52,9 +53,12 @@ while i < len(sys.argv):
     elif sys.argv[i] == '--prefix':
         i += 1
         db_prefix = sys.argv[i]
-    elif sys.argv[i] == '--workflow':
+    elif sys.argv[i] == '--aei':
         i += 1
-        workflow = sys.argv[i]
+        activity_exec_id = sys.argv[i]
+    elif sys.argv[i] == '--transition':
+        i += 1
+        transition = sys.argv[i]
     elif sys.argv[i] == '--source':
         i += 1
         source = sys.argv[i]
@@ -63,7 +67,7 @@ while i < len(sys.argv):
 session = Session(**aws_args)
 db = session.client('dynamodb', **dynamodb_args)
 
-workflow_request_id = workflow + '::' + str(uuid.uuid1())
+activity_event_id = activity_exec_id + '::' + str(uuid.uuid1())
 when_epoch = int(time.time())
 when_gm = time.gmtime(when_epoch)
 when_list = [
@@ -77,10 +81,11 @@ when_list = [
 
 
 db.put_item(
-    TableName=db_prefix + 'workflow_request',
+    TableName=db_prefix + 'activity_event',
     Item={
-        "workflow_request_id": {"S": workflow_request_id},
-        "workflow_name": {"S": workflow},
+        "activity_event_id": {"S": activity_event_id},
+        "activity_exec_id": {"S": activity_exec_id},
+        "transition": {"S": transition},
         "when": {"L": when_list},
         "when_epoch": {"N": str(when_epoch)},
         "source": {"S": source}
