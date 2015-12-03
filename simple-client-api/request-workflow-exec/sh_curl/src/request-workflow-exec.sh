@@ -32,7 +32,7 @@ UUID=`cat /proc/sys/kernel/random/uuid`
 workflow_request_id="${workflow_name}::${UUID}"
 
 date_epoch=`date -u +%s`
-date_list=`date --date="@$date_epoch" +"[%Y,%-m,%-d,%-H,%-M,%-S]"`
+date_list=`date --date="@$date_epoch" +"[{\"N\":\"%Y\"},{\"N\":\"%-m\"},{\"N\":\"%-d\"},{\"N\":\"%-H\"},{\"N\":\"%-M\"},{\"N\":\"%-S\"}]"`
 
 method=POST
 targetPrefix=DynamoDB_20120810
@@ -45,11 +45,11 @@ echo '{"TableName":"'"${dbPrefix}"'workflow_request","Item":{'\
     '"workflow_request_id":{"S":"'"${workflow_request_id}"'"},'\
     '"workflow_name":{"S":"'"${workflow_name}"'"},'\
     '"when_epoch":{"N":"'${date_epoch}'"},'\
+    '"when":{"L":'${date_list}'},'\
     '"source":{"S":"'"${source}"'"}'\
     '}}' > ${payload_file}
-#    '"when":{"L":'${date_list}'},'\
 
-# NOTE: -D for debug mode
+# NOTE: Add -D for debug mode
 exec ${here}/core_aws_request.sh \
     -s dynamodb \
     -r "${method}" \

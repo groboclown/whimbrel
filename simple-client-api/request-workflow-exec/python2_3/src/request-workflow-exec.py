@@ -66,7 +66,14 @@ db = session.client('dynamodb', **dynamodb_args)
 workflow_request_id = workflow + '::' + str(uuid.uuid1())
 when_epoch = int(time.time())
 when_gm = time.gmtime(when_epoch)
-when_list = [when_gm.tm_year, when_gm.tm_mon, when_gm.tm_mday, when_gm.tm_hour, when_gm.tm_min, when_gm.tm_sec]
+when_list = [
+    {"N": str(when_gm.tm_year)},
+    {"N": str(when_gm.tm_mon)},
+    {"N": str(when_gm.tm_mday)},
+    {"N": str(when_gm.tm_hour)},
+    {"N": str(when_gm.tm_min)},
+    {"N": str(when_gm.tm_sec)}
+]
 
 
 db.put_item(
@@ -74,7 +81,7 @@ db.put_item(
     Item={
         "workflow_request_id": {"S":workflow_request_id},
         "workflow_name": {"S":workflow},
-        #"when": {"L": when_list},
+        "when": {"L": when_list},
         "when_epoch": {"N": str(when_epoch)},
         "source": {"S": source}
     }
