@@ -1,26 +1,21 @@
-# Simple Client API for `/bin/sh`
+# Request Workflow Exec through Simple Client API for `/bin/sh`
 
-When you're using a simple container like Docker, you don't want to weigh down
-your base image with lots of useless cruft, like Perl or Python unless your
-application really needs it.  To this end, the [Simple Client API](../../docs/contract.md)
-is also provided in a simple shell script with minimal dependencies.
+See [the sh / curl documents](../../../whimbrel-client-core/sh_curl) for details on the hows
+and whys behind using a shell script for the simple client API.
 
-Each script file is self contained.  You can pick and choose as necessary.
+## `request-workflow-exec.sh` usage
 
+ENV requirements:
 
-## Package dependencies
+* `AWS_ACCESS_KEY` aws access key
+* `AWS_SECRET_KEY` aws secret key
+* `AWS_REGION` aws region for the request
 
-To run the provided scripts, the following Linux packages must be installed:
+Arguments:
 
-* **openssl >= 1.0.0** - Provides programs for AWS signing.
-* **curl** - Used to send AWS commands.
-* **sh** - Designed to use with Ash or other basic shell programs.  Bash is not required.
-
-
-
-
-
-# References
-
-* http://czak.pl/2015/09/15/s3-rest-api-with-curl.html
-* http://tmont.com/blargh/2014/1/uploading-to-s3-in-bash
+* Arg 1: database prefix
+* Arg 2: DynamoDB endpoint URL.  This includes `http://` or `https://`, but not the trailing slash.
+    e.g. `http://localhost:8080`
+* Arg 3: Host to connect to (in url)
+* Arg 4: workflow name
+* Arg 5: source
