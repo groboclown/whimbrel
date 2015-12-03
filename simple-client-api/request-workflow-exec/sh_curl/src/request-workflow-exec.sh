@@ -44,13 +44,13 @@ payload_file=/tmp/$$.payload
 echo '{"TableName":"'"${dbPrefix}"'workflow_request","Item":{'\
     '"workflow_request_id":{"S":"'"${workflow_request_id}"'"},'\
     '"workflow_name":{"S":"'"${workflow_name}"'"},'\
-    '"when":{"L":'${date_list}'},'\
-    '"when_epoch":{"N":'${date_epoch}'},'\
+    '"when_epoch":{"N":"'${date_epoch}'"},'\
     '"source":{"S":"'"${source}"'"}'\
-    '}' > ${payload_file}
+    '}}' > ${payload_file}
+#    '"when":{"L":'${date_list}'},'\
 
 # NOTE: -D for debug mode
-exec ${here}/core_aws_request.sh -D \
+exec ${here}/core_aws_request.sh \
     -s dynamodb \
     -r "${method}" \
     -p "/" \
