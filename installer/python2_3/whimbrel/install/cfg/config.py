@@ -42,12 +42,23 @@ DEFAULTS = {
         'aws_secret_access_key': None,
         'region_name': None,
         'aws_session_token': None,
-        'profile_name': None
+        'profile_name': None,
+        'endpoint': None,
+        'use ssl': True
     },
     'dynamodb': {
         'wait seconds': 5,
         'endpoint': None,
-        'use ssl': True
+        'use ssl': None
+    },
+    "lambda": {
+        'use ssl': None,
+        'endpoint': None,
+        "default iam role": None,
+        "iam roles": {
+            "on_db_activity_event": None,
+            "on_db_workflow_request": None
+        }
     },
     'setup': {
         'db prefix': 'whimbrel_',
@@ -89,6 +100,10 @@ class Config(object):
         return self.get_category('setup')
 
     @property
+    def _lambda(self):
+        return self.get_category('lambda')
+
+    @property
     def db_prefix(self):
         return self._setup['db prefix']
 
@@ -98,7 +113,7 @@ class Config(object):
 
     @property
     def db_endpoint(self):
-        return self._dynamodb['endpoint']
+        return self._dynamodb['endpoint'] or self._aws['endpoint']
 
     def set_db_endpoint(self, db_endpoint):
         assert isinstance(db_endpoint, str)
@@ -106,7 +121,7 @@ class Config(object):
 
     @property
     def db_use_ssl(self):
-        return self._dynamodb['use ssl']
+        return self._dynamodb['use ssl'] is not None and self._dynamodb['use ssl'] or self._aws['use ssl']
 
     @property
     def db_wait_seconds(self):
@@ -115,6 +130,14 @@ class Config(object):
     def set_db_wait_seconds(self, val):
         assert isinstance(val, float) or isinstance(val, int)
         self._dynamodb['wait seconds'] = val
+
+    @property
+    def lambda_use_ssl(self):
+        return self._lambda('use ssl') is not None and self._lambda['use ssl'] or self._aws['use ssl']
+
+    @property
+    def lambda_endpoint(self):
+        return self._lambda['endpoint'] or self._aws['endpoint']
 
     @property
     def modules(self):
