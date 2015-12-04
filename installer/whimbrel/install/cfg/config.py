@@ -22,7 +22,7 @@ SUPPORTED_MODULES = (
 
     # Triggers lambda logic using simple API DynamoDB events.
     # Requires the "workflow_lambdas".
-    "module_core"
+    "dynamodb_lambdas"
 )
 
 
@@ -175,7 +175,16 @@ class Config(object):
         return dict(self.__loaded_modules)
 
     def create_boto3_session(self):
-        args = dict(self._aws)
+        args = {}
+
+        def pop(k):
+            args[k] = self._aws[k]
+
+        pop('aws_access_key_id')
+        pop('aws_secret_access_key')
+        pop('region_name')
+        pop('aws_session_token')
+        pop('profile_name')
 
         session = Session(**args)
         return session

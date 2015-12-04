@@ -31,7 +31,8 @@ def install_db(config):
             _create_table(client, db_prefix, name, desc)
 
     requested_tables = {}
-    for module in config.load_modules():
+    for module_name in config.modules:
+        module = config.load_modules()[module_name]
         # Every module has the "get_schema()" function; it returns {} if it
         # has no schema to install.
         requested_tables.update(module.get_schema())
