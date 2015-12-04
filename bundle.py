@@ -4,27 +4,13 @@
 Constructs the basic bundles for use.
 """
 
-
 import os
-import sys
 import shutil
-import tempfile
 import stat
+import sys
+import tempfile
 from distutils.dir_util import copy_tree
 
-SIMPLE_JOIN = [
-    'simple-client-api/activity-update',
-    'simple-client-api/heartbeat',
-    'simple-client-api/request-workflow-exec',
-    'lambda-source'
-]
-COPY = [
-    'installer'
-]
-JOIN = {
-    'services/heartbeat-monitor': [],
-    'services/web-monitor': []
-}
 CONVERT_FILE_EXT = (".sh", ".py")
 EXEC_FLAG_EXT = (".sh", ".py")
 EXEC_FLAG_NAMES = list()
@@ -34,7 +20,9 @@ def _copy_to_temp_file_with_fix_line_endings(filename):
     (src_handle, src_name) = tempfile.mkstemp()
     try:
         with open(filename, "rb") as f:
-            os.write(src_handle, f.read().replace("\r\n", "\n"))
+            data = f.read()
+            data = data.replace(b"\r\n", b"\n")
+        os.write(src_handle, data)
         os.close(src_handle)
     except:
         os.close(src_handle)
@@ -57,54 +45,75 @@ def set_exec_flag(filename):
     os.chmod(filename, st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 
+def fix_dir(dir_name, line_endings=False, exec_flag=False):
+    for (path, dirs, files) in os.walk(dir_name):
+        for name in files:
+            file = os.path.join(path, name)
+            ext = os.path.splitext(name)[1]
+            if line_endings and ext in CONVERT_FILE_EXT:
+                fix_line_endings(file)
+            if exec_flag and (ext in EXEC_FLAG_EXT or name in EXEC_FLAG_NAMES):
+                set_exec_flag(file)
+
+
+def mkdir(filename):
+    if not os.path.isdir(filename):
+        os.makedirs(filename)
+
+
+# =====================================================================================================
+
+
 if __name__ == '__main__':
+    # INIT
     basedir = os.path.dirname(sys.argv[0])
     if basedir is None or basedir == '':
         basedir = os.path.curdir
-    sys.path.append(os.path.join(basedir, "installer", "python2_3"))
-    from whimbrel.install.util import out
-    export_dir = os.path.join(basedir, 'dist')
-    if os.path.isdir(export_dir):
-        shutil.rmtree(export_dir)
-    os.makedirs(export_dir)
+    sys.path.append(os.path.join(basedir, "installer", "whimbrel", "install"))
+    from util import out
+    dist_dir = os.path.join(basedir, 'dist')
 
-    for copy_dir in COPY:
-        src_dir = os.path.join(basedir, copy_dir)
-        dest_dir = os.path.join(export_dir, copy_dir)
-        out.action("Copy", "Setting up {0}: {1} to {2}".format(copy_dir, src_dir, dest_dir))
-        copy_tree(src_dir, dest_dir, False, None)
-        out.status("OK")
+    # CLEAN
+    if os.path.isdir(dist_dir):
+        shutil.rmtree(dist_dir)
 
-    for join_dir, core_dirs in JOIN.items():
-        src_dir = os.path.join(basedir, join_dir)
-        dest_dir = os.path.join(export_dir, join_dir)
-        out.action("Copy", "Setting up {0}: {1} to {2}".format(copy_dir, src_dir, dest_dir))
-        copy_tree(src_dir, dest_dir)
-        out.status("OK")
+    # MK-DIST
+    mkdir(dist_dir)
 
-        for core_dir in core_dirs:
-            src_dir = os.path.join(basedir, 'whimbrel-client-core', core_dir)
-            copy_tree(src_dir, dest_dir)
+    # MK-DOCS
+    out.action("Copy", "docs")
+    copy_tree(os.path.join(basedir, 'docs'), os.path.join(dist_dir, 'docs'), False, None)
+    out.status("OK")
 
-    for join_dir in SIMPLE_JOIN:
-        base_dir = os.path.join(basedir, join_dir)
-        dest_dir = os.path.join(export_dir, join_dir)
-        out.action("Copy", "Setting up {0}".format(join_dir))
-        for f in os.listdir(base_dir):
-            src_dir = os.path.join(base_dir, f)
-            fd_dir = os.path.join(dest_dir, f)
-            copy_tree(src_dir, fd_dir)
-            src_dir = os.path.join(basedir, 'whimbrel-client-core', f)
-            copy_tree(src_dir, fd_dir)
-        out.status("OK")
+    # MK-INSTALLER
+    out.action("Make", "installer")
+    copy_tree(os.path.join(basedir, "installer"), os.path.join(dist_dir, "installer"))
+    fix_dir(os.path.join(dist_dir, "installer"), line_endings=True)
+    set_exec_flag(os.path.join(dist_dir, "installer", "setup.py"))
+    out.status("OK")
 
-    out.action("Fix", "Fixing line endings and exec flags")
-    for (path, dirs, files) in os.walk(export_dir):
-        for f in files:
-            file = os.path.join(path, f)
-            ext = os.path.splitext(f)[1]
-            if ext in CONVERT_FILE_EXT:
-                fix_line_endings(file)
-            if ext in EXEC_FLAG_EXT or f in EXEC_FLAG_NAMES:
-                set_exec_flag(file)
+    # MK-SERVICES
+    out.action("Make", "services")
+    copy_tree(os.path.join(basedir, "services"), os.path.join(dist_dir, "services"))
+    fix_dir(os.path.join(dist_dir, "services"), line_endings=True, exec_flag=True)
+    out.status("OK")
+
+    # MK-MODULES
+    out.action("Make", "modules")
+    for module_name in os.listdir(os.path.join(basedir, "modules")):
+        # A bit tricky...
+        module_dir = os.path.join(basedir, "modules", module_name)
+        if os.path.isfile(module_dir):
+            mkdir(os.path.join(dist_dir, "modules"))
+            shutil.copyfile(module_dir, os.path.join(dist_dir, "modules", module_name))
+            continue
+        if os.path.isdir(os.path.join(module_dir, "installer", "python2_3", "module_" + module_name)):
+            copy_tree(
+                os.path.join(module_dir, "installer", "python2_3", "module_" + module_name),
+                os.path.join(dist_dir, "installer", "module_" + module_name),
+                False, None)
+        else:
+            raise Exception("No installer for module " + module_name)
+
+    copy_tree(os.path.join(basedir, "modules"), os.path.join(dist_dir, "modules"))
     out.status("OK")
