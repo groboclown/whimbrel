@@ -88,7 +88,8 @@ db.put_item(
     TableName=db_prefix + 'workflow_exec',
     Item={
         "workflow_exec_id": {"S": workflow_exec_id},
-        "workflow_request_id": {"S": "-"},
+        # No workflow request ID, because this isn't originating from a request
+        # "workflow_request_id": {"S": "-"},
         "state": {"S": "RUNNING"},
         "start_time": {"L": when_list},
         "start_time_epoch": {"N": str(when_epoch)},

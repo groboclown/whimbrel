@@ -6,13 +6,12 @@ Definition type for the DynamoDB tables.
 class DbTableDef(object):
     # Note that the definition does not know about the name.
     # This is to reduce cut-n-paste errors.
-    def __init__(self, pk, indexes, attributes, extra_columns, stream, version):
+    def __init__(self, pk, indexes, attributes, stream, version):
         object.__init__(self)
         assert len(pk) == 2 or len(pk) == 4
         self.__s_pk = pk
         self.__s_indexes = indexes
         self.__s_attributes = attributes
-        self.__s_extra_columns = extra_columns
         self.__s_stream = stream
         self.__attributes = None
         self.__indexes = None

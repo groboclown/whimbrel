@@ -12,9 +12,7 @@ DYNAMODB_LAMBDAS_DB_TABLES = {
         attributes={
             "source": "S",
             "manual": "B",
-            "when_epoch": "N"
-        },
-        extra_columns={
+            "when_epoch": "N",
             "when": "L[I,I,I,I,I,I]"
         },
         stream=True
@@ -26,21 +24,9 @@ DYNAMODB_LAMBDAS_DB_TABLES = {
         attributes={
             "source": "S",
             "manual": "B",
-            "transition": "S"
-        },
-        extra_columns={
+            "transition": "S",
             "when": "L[I,I,I,I,I,I]"
         },
         stream=True
-    ),
-    "workflow_lambda": DbTableDef(
-        version=1,
-        pk=["workflow_name", "S"],
-        indexes={},
-        attributes={
-            "lambda": "S"
-        },
-        extra_columns={},
-        stream=False
     )
 }

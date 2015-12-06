@@ -12,7 +12,6 @@ WORKFLOW_LAMBDAS_DB_TABLES = {
         attributes={
             "lambda": "S"
         },
-        extra_columns={},
         stream=False
     )
 }
