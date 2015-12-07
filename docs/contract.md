@@ -68,22 +68,7 @@ client process.  This applies for both the Lambda functions which
 are triggered off up updates from the Simple Lambda API, and clients that
 directly run this logic to avoid the Lambda cost or delays.
 
-### Initiate a New Workflow
-
-The `whimbrel_workflow_request` insert should still be inserted, but with the
-`manual` attribute set to True, to prevent the Lambda functions (if they
-exist) from attempting to start the workflow on their own.  It's not
-necessary to add to this table, but it is useful for tracing.
-
-The `whimbrel_workflow_exec` then needs to have a new item added.  The
-initial state is `REQUESTED`.
-
-Then, each of the initial activities that run for the workflow are
-added into the `whimbrel_activity_exec`, with an initial state of
-`REQUESTED`, then the `whimbrel_activity_exec_dependency` table
-is inserted to (if necessary).
-
-Finally, the activities requested must be triggered.  See below.
+### Workflow Execution
 
 A workflow execution has the following states:
 
@@ -98,6 +83,35 @@ A workflow execution has the following states:
 * `CANCELLED` when the workflow was cancelled, and all the activities are stopped.
 * `COMPLETED` when the activities have all stopped in a way that did not trigger a failure in the
     workflow.
+
+#### Requesting a workflow
+
+The `whimbrel_workflow_request` insert should be inserted, but with the
+`manual` attribute set to True, to prevent the Lambda functions (if they
+exist) from attempting to start the workflow on their own.  It's not
+necessary to add to this table, but it is useful for tracing.  Note that
+this table can only be added to if the dynamodb_lambdas module is installed.
+
+The `whimbrel_workflow_exec` then needs to have a new item added.  The
+initial state is `REQUESTED`.
+
+#### Starting the Workflow
+
+When a workflow execution begins, the state is updated to `RUNNING`, then
+the transition decision for the workflow executes, which populates the
+list of activities and their dependencies.  For the `whimbrel_lambdas`
+module, the `run` attribute of the `whimbrel_workflow_lambda` table
+is called, and that lambda must initialize the activities and their dependencies.
+
+Each of the initial activities that run for the workflow are
+added into the `whimbrel_activity_exec`, with an initial state of
+`REQUESTED`, then the `whimbrel_activity_exec_dependency` table
+is inserted to (if necessary).
+
+Finally, the activities requested must be triggered.  See below.
+
+(TODO: whimbrel_lambdas includes additional lambdas for state
+transitions, and responding to activity failures.)
 
 
 ### Update Activity States and Transitions.

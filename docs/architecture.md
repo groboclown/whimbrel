@@ -65,6 +65,9 @@ This table uses a write-once model (no updates).
            This should only be set to True if the
            Logic API is used; Simple Lambda API should not even set this
            attribute.
+        * `workflow_version` (Number)
+           (optional) version number of the workflow, for use with
+           `whimbrel_lambdas`
 
 
 ### `whimbrel_activity_event` (dynamodb_lambdas module)
@@ -126,6 +129,9 @@ Lists the execution state of workflow.
            with each value being a Number.  `second` can be a float, everything
            else must be an integer.  As this is sent by the client, it should
            be in UTC.
+        * `workflow_version` (Number)
+           (optional) version number of the workflow, for use with
+           `whimbrel_lambdas`
 
 
 ### `whimbrel_activity_exec` (core module)
@@ -149,8 +155,9 @@ Lists the execution state of the activities.
             Unix epoch time, UTC.  Negative number means that
             heartbeat is not enabled.
     * Additional attributes:
-        * `workflow_name` (String, local)
-        * `activity_name` (String, local)
+        * `workflow_name` (String)
+        * `activity_name` (String)
+        * `activity_version` (Number, optional)
         * `heartbeat_enabled` (Boolean)
             True if the heartbeats are supported for this activity.
             If False, then the heartbeat_time_epoch must be negative.
@@ -193,9 +200,45 @@ function that will handle the activity and workflow decisions.
     * Primary key:
         * `workflow_name` (String)
             The workflow name for this lambda
+        * `version` (Number)
+            The version number of this workflow.
     * Additional Attributes:
-        * `lambda` (String)
-            Name of the lambda to run.
+        * `run` (String)
+            Name of the lambda to execute when the workflow
+            transitions from `REQUESTED` to `RUNNING`.
+            Must not be null or empty.
+        * `run_version` (String)
+            Version of the `run` lambda.
+        * `cancelled` (String)
+            may be null or empty, if no lambda is to run.
+        * `cancelled_version` (String)
+        * `activity_failed` (String)
+            may be null or empty, if no lambda is to run.
+        * `activity_failed_version` (String)
+        * `activity_completed` (String)
+        * `activity_completed_version` (String)
+        * `completed` (String)
+            may be null or empty, if no lambda is to run.
+        * `completed_version` (String)
+
+* `whimbrel_activity_lambda`
+    * Primary key:
+        * `activity_name` (String)
+        * `version` (Number)
+    * Additional Attributes:
+        * `ready` (String)
+            Lambda to call when the activity is in the `READY` state.
+            This can do what it needs to activate the activity,
+            and then it should set the correct lambda state.
+        * `ready_version` (String)
+        * `cancelled` (String)
+        * `cancelled_version` (String)
+        * `timed_out` (String)
+        * `timed_out_version` (String)
+        * `failed` (String)
+        * `failed_version` (String)
+        * `completed` (String)
+        * `completed_version` (String)
 
 
 ## Workflow Jobs

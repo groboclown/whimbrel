@@ -14,7 +14,8 @@ CORE_DB_TABLES = {
         },
         attributes={
             "workflow_request_id": "S",
-            "start_time": "L[I,I,I,I,I,I]"
+            "start_time": "L[N,N,N,N,N,N]",
+            "workflow_version": "N"
         },
         stream=False
     ),
@@ -32,9 +33,10 @@ CORE_DB_TABLES = {
             "queue_time_epoch": "N",
             "end_time_epoch": "N",
             "heartbeat_enabled": "BOOL",
-            "queue_time": "L[I,I,I,I,I,I]",
-            "start_time": "L[I,I,I,I,I,I]",
-            "end_time": "L[I,I,I,I,I,I]"
+            "activity_version": "N",
+            "queue_time": "L[N,N,N,N,N,N]",
+            "start_time": "L[N,N,N,N,N,N]",
+            "end_time": "L[N,N,N,N,N,N]"
         },
         stream=False
     ),

@@ -13,7 +13,8 @@ DYNAMODB_LAMBDAS_DB_TABLES = {
             "source": "S",
             "manual": "B",
             "when_epoch": "N",
-            "when": "L[I,I,I,I,I,I]"
+            "when": "L[N,N,N,N,N,N]",
+            "workflow_version": "N"
         },
         stream=True
     ),
@@ -25,7 +26,7 @@ DYNAMODB_LAMBDAS_DB_TABLES = {
             "source": "S",
             "manual": "B",
             "transition": "S",
-            "when": "L[I,I,I,I,I,I]"
+            "when": "L[N,N,N,N,N,N]"
         },
         stream=True
     )
