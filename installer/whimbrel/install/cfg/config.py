@@ -5,6 +5,7 @@ Configuration object
 from boto3.session import Session
 import types
 import os
+import sys
 import importlib
 
 # Note that these are ordered.
@@ -74,7 +75,13 @@ DEFAULTS = {
     'setup': {
         'db prefix': 'whimbrel_',
     },
-    'modules': ['core']
+    'modules': ['core'],
+    'node.js': {
+        "npm exec": 'npm'
+    },
+    'overrides': {
+        'lambda dir': None
+    }
 }
 
 
@@ -93,6 +100,8 @@ class Config(object):
                 for key2, val in value_dict.items():
                     if key2 not in self.__params[key]:
                         self.__params[key][key2] = val
+        self.basedir = 'basedir' in self.__params and self.__params['basedir'] or os.path.dirname(sys.argv[0])
+
 
     def get_category(self, name):
         if name not in self.__params:
@@ -114,6 +123,14 @@ class Config(object):
     @property
     def _lambda(self):
         return self.get_category('lambda')
+
+    @property
+    def _nodejs(self):
+        return self.get_category('node.js')
+
+    @property
+    def _overrides(self):
+        return self.get_category('overrides')
 
     @property
     def db_prefix(self):
@@ -150,6 +167,14 @@ class Config(object):
     @property
     def lambda_endpoint(self):
         return self._lambda['endpoint'] or self._aws['endpoint']
+
+    @property
+    def npm_exec(self):
+        return self._nodejs['npm exec']
+
+    @property
+    def override_lambda_dir(self):
+        return self._overrides['lambda dir']
 
     @property
     def modules(self):

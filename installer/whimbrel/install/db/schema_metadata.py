@@ -13,7 +13,6 @@ METADATA_DB_TABLES = {
             "version": "N",
             "description": "B"
         },
-        extra_columns={},
         stream=False
     )
 }

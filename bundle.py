@@ -9,6 +9,7 @@ import shutil
 import stat
 import sys
 import tempfile
+import subprocess
 from distutils.dir_util import copy_tree
 
 CONVERT_FILE_EXT = (".sh", ".py")
@@ -117,3 +118,6 @@ if __name__ == '__main__':
 
     copy_tree(os.path.join(basedir, "modules"), os.path.join(dist_dir, "modules"))
     out.status("OK")
+
+    # INITIAL MK-LAMBDAS (for quick test execution)
+    subprocess.call([os.path.join(dist_dir, "installer", "setup.py"), "setup.config", "lambdas"])
