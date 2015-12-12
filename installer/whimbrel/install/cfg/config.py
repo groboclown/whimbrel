@@ -80,7 +80,8 @@ DEFAULTS = {
         "npm exec": 'npm'
     },
     'overrides': {
-        'lambda dir': None
+        'lambda dir': None,
+        'cache dir': None
     }
 }
 
@@ -101,7 +102,6 @@ class Config(object):
                     if key2 not in self.__params[key]:
                         self.__params[key][key2] = val
         self.basedir = 'basedir' in self.__params and self.__params['basedir'] or os.path.dirname(sys.argv[0])
-
 
     def get_category(self, name):
         if name not in self.__params:
@@ -169,12 +169,16 @@ class Config(object):
         return self._lambda['endpoint'] or self._aws['endpoint']
 
     @property
+    def cache_dir(self):
+        return self._overrides['cache dir'] or os.path.join(self.basedir, ".cache.d")
+
+    @property
     def npm_exec(self):
         return self._nodejs['npm exec']
 
     @property
     def override_lambda_dir(self):
-        return self._overrides['lambda dir']
+        return self._overrides['lambda dir'] or os.path.join(self.basedir, "user-overrides")
 
     @property
     def modules(self):

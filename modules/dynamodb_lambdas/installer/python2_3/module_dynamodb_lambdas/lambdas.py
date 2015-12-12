@@ -4,13 +4,13 @@ DYNAMODB_LAMBDAS = {
         "product": {
             "copy-files": [
                 {
-                    "src": ["dynamodb_lambdas", "lambdas", "node.js", "src", "onDbActivityEvent.js"],
+                    "src": ["..", "modules", "dynamodb_lambdas", "lambdas", "node.js", "src", "onDbActivityEvent.js"],
                     "dest": ["node_modules", "onDbActivityEvent", "index.js"]
                 }
             ],
             "copy-dirs": [
                 {
-                    "srcdir": ["workflow_lambdas", "library", "node.js", "src", "node_modules"],
+                    "srcdir": ["..", "modules", "workflow_lambdas", "library", "node.js", "src", "node_modules"],
                     "destdir": ["node_modules"]
                 }
             ],
@@ -19,8 +19,8 @@ DYNAMODB_LAMBDAS = {
             },
             "tokenized": [
                 {
-                    "srcdir": ["workflow_lambdas", "library", "node.js", "tokenized"],
-                    "destdir": []
+                    "srcdir": ["..", "modules", "workflow_lambdas", "library", "node.js", "tokenized"],
+                    "destdir": ["."]
                 }
             ],
             "npm": [
@@ -29,23 +29,25 @@ DYNAMODB_LAMBDAS = {
         },
         "unit-tests": {
             "exec": [],
-            "copy-dirs": [
-                {
-                    "srcdir": ["dynamodb_lambdas", "lambdas", "node.js", "unit-test", "node_modules"],
-                    "destdir": ["node_modules"]
-                }
-            ],
-            "npm": [ "mocha" ]
+            # TODO add in test dirs
+            #"copy-dirs": [
+            #    {
+            #        "srcdir": ["..", "modules", "dynamodb_lambdas", "lambdas", "node.js", "unit-test", "node_modules"],
+            #        "destdir": ["node_modules"]
+            #    }
+            #],
+            "npm": ["mocha"]
         },
         "integration-tests": {
             "exec": [],
-            "copy-dirs": [
-                {
-                    "srcdir": ["dynamodb_lambdas", "lambdas", "node.js", "integration-test", "node_modules"],
-                    "destdir": ["node_modules"]
-                }
-            ],
-            "npm": [ "mocha" ]
+            # TODO add in test dirs
+            #"copy-dirs": [
+            #    {
+            #        "srcdir": ["..", "modules", "dynamodb_lambdas", "lambdas", "node.js", "integration-test", "node_modules"],
+            #        "destdir": ["node_modules"]
+            #    }
+            #],
+            "npm": ["mocha"]
         }
     }
 }
