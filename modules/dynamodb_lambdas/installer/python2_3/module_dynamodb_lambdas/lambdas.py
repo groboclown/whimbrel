@@ -29,24 +29,32 @@ DYNAMODB_LAMBDAS = {
         },
         "unit-tests": {
             "exec": [],
-            # TODO add in test dirs
-            #"copy-dirs": [
-            #    {
-            #        "srcdir": ["..", "modules", "dynamodb_lambdas", "lambdas", "node.js", "unit-test", "node_modules"],
-            #        "destdir": ["node_modules"]
-            #    }
-            #],
+            "copy-dirs": [
+                # TODO add in test dirs
+                # {
+                #    "srcdir": ["..", "modules", "dynamodb_lambdas", "lambdas", "node.js", "unit-test", "node_modules"],
+                #    "destdir": ["node_modules"]
+                # },
+                {
+                    "srcdir": ["..", "modules", "workflow_lambdas", "library", "node.js", "unit-test", "node_modules"],
+                    "destdir": ["node_modules"]
+                }
+            ],
             "npm": ["mocha"]
         },
         "integration-tests": {
             "exec": [],
-            # TODO add in test dirs
-            #"copy-dirs": [
-            #    {
-            #        "srcdir": ["..", "modules", "dynamodb_lambdas", "lambdas", "node.js", "integration-test", "node_modules"],
-            #        "destdir": ["node_modules"]
-            #    }
-            #],
+            "copy-dirs": [
+                # TODO add in test dirs
+                # {
+                #    "srcdir": ["..", "modules", "dynamodb_lambdas", "lambdas", "node.js", "integration-test", "node_modules"],
+                #    "destdir": ["node_modules"]
+                # },
+                {
+                    "srcdir": ["..", "modules", "workflow_lambdas", "library", "node.js", "integration-test", "node_modules"],
+                    "destdir": ["node_modules"]
+                }
+            ],
             "npm": ["mocha"]
         }
     }

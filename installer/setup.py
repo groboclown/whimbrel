@@ -1,8 +1,10 @@
 #!/usr/bin/python
 
+# System libraries
 import os
 import sys
 
+# Local package; ensure it's in the path.
 sys.path.append(sys.argv[0] == '' and os.path.curdir or os.path.dirname(sys.argv[0]))
 from whimbrel.install.cfg import read_config
 from whimbrel.install.util import out

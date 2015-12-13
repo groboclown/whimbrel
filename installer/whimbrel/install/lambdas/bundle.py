@@ -52,6 +52,50 @@ def bundle_lambdas(config, lambda_dict):
 
 
 def _install_lambda(config, lambda_name, lambda_def, lambda_outdir, lambda_zip_filename):
+    # First, gather up all the file locations.
+    # We do this separate of the actual copy, because we
+    # don't want duplicate files sneaking into our zip files.
+
+    # maps DESTINATION FILE to [SOURCE FILE (string, relative path), IS TOKENIZED (boolean)]
+    copy_files = {}
+
+    if "npm" in lambda_def:
+        # HUGE TODO
+        # This currently doesn't pick up any inner dependencies that
+        # the pulled-in node module relies upon.
+        npm_cache_dir = _get_npm_cache_dir(config)
+        for npm_name in lambda_def['npm']:
+            npm_install(config, npm_name)
+            module_dir = os.path.join("node_modules", npm_name)
+            copy_files.update(_find_bundle_dir_files(
+                os.path.join(npm_cache_dir, module_dir),
+                module_dir, False))
+    if "copy-dirs" in lambda_def:
+        for copy_dir_def in lambda_def['copy-dirs']:
+            src_dir = os.path.join(config.basedir, *copy_dir_def["srcdir"])
+            dest_dir = os.path.join(*copy_dir_def["destdir"])
+            copy_files.update(_find_bundle_dir_files(
+                    src_dir, dest_dir, False))
+    if "copy-files" in lambda_def:
+        for copy_file_def in lambda_def['copy-files']:
+            src = os.path.join(config.basedir, *copy_file_def["src"])
+            dest = os.path.join(*copy_file_def["dest"])
+            copy_files[dest] = [src, False]
+    if "tokenized" in lambda_def:
+        for copy_dir_def in lambda_def['tokenized']:
+            src_dir = os.path.join(config.basedir, *copy_dir_def["srcdir"])
+            dest_dir = os.path.join(*copy_dir_def["destdir"])
+            copy_files.update(_find_bundle_dir_files(src_dir, dest_dir, True))
+    if "user-overrides" in lambda_def:
+        for src_name, dest_file in lambda_def['user-overrides'].items():
+            src = os.path.join(config.override_lambda_dir, src_name)
+            dest = os.path.join(*dest_file)
+            if os.path.isfile(src):
+                copy_files[dest] = [src, True]
+    # exec is not used here
+
+    # Finally, we populate the files.
+
     if os.path.exists(lambda_outdir):
         shutil.rmtree(lambda_outdir)
     if os.path.exists(lambda_zip_filename):
@@ -61,39 +105,9 @@ def _install_lambda(config, lambda_name, lambda_def, lambda_outdir, lambda_zip_f
     lambda_zip = zipfile.ZipFile(lambda_zip_filename, "w", compression=zipfile.ZIP_DEFLATED)
     tokens = _create_token_dict(config)
     try:
-        if "npm" in lambda_def:
-            # HUGE TODO
-            # This currently doesn't pick up any inner dependencies that
-            # the pulled-in node module relies upon.
-            npm_cache_dir = _get_npm_cache_dir(config)
-            for npm_name in lambda_def['npm']:
-                npm_install(config, npm_name)
-                module_dir = os.path.join("node_modules", npm_name)
-                _copy_bundle_dir(
-                    os.path.join(npm_cache_dir, module_dir),
-                    module_dir, lambda_outdir, lambda_zip)
-        if "copy-dirs" in lambda_def:
-            for copy_dir_def in lambda_def['copy-dirs']:
-                src_dir = os.path.join(config.basedir, *copy_dir_def["srcdir"])
-                dest_dir = os.path.join(*copy_dir_def["destdir"])
-                _copy_bundle_dir(src_dir, dest_dir, lambda_outdir, lambda_zip)
-        if "copy-files" in lambda_def:
-            for copy_file_def in lambda_def['copy-files']:
-                src = os.path.join(config.basedir, *copy_file_def["src"])
-                dest = os.path.join(*copy_file_def["dest"])
-                _copy_bundle_file(src, dest, lambda_outdir, lambda_zip, None)
-        if "tokenized" in lambda_def:
-            for copy_dir_def in lambda_def['tokenized']:
-                src_dir = os.path.join(config.basedir, *copy_dir_def["srcdir"])
-                dest_dir = os.path.join(*copy_dir_def["destdir"])
-                _copy_bundle_dir(src_dir, dest_dir, lambda_outdir, lambda_zip, tokens)
-        if "user-overrides" in lambda_def:
-            for src_name, dest_file in lambda_def['user-overrides'].items():
-                src = os.path.join(config.override_lambda_dir, src_name)
-                dest = os.path.join(*dest_file)
-                if os.path.isfile(src):
-                    _copy_bundle_file(src, dest, lambda_outdir, lambda_zip, tokens)
-        # exec is not used here
+        for dest, src_list in copy_files.items():
+            src, is_tokenized = src_list
+            _copy_bundle_file(src, dest, lambda_outdir, lambda_zip, is_tokenized and tokens or None)
     finally:
         lambda_zip.close()
 
@@ -151,7 +165,8 @@ def _join_defs(*defs):
     return ret
 
 
-def _copy_bundle_dir(src_dir, archive_path, out_dir, zip_file, token_dict=None):
+def _find_bundle_dir_files(src_dir, archive_path, is_tokenized):
+    ret = {}
     copy_dirs = [[src_dir, archive_path]]
     while len(copy_dirs) > 0:
         next_src_dir, next_archive_path = copy_dirs.pop()
@@ -161,27 +176,14 @@ def _copy_bundle_dir(src_dir, archive_path, out_dir, zip_file, token_dict=None):
             if os.path.isdir(src_filename):
                 copy_dirs.append([src_filename, dest_filename])
             else:
-                _copy_bundle_file(src_filename, dest_filename, out_dir, zip_file, token_dict)
-
-
-SRC_COPY_REF = {}
+                ret[dest_filename] = [src_filename, is_tokenized]
+    return ret
 
 
 def _copy_bundle_file(src_file, archive_file, out_dir, zip_file, token_dict):
     out_file = os.path.join(out_dir, archive_file)
     if not os.path.isdir(os.path.dirname(out_file)):
         os.makedirs(os.path.dirname(out_file))
-
-    # Debugging for wasted effort
-    if os.path.isfile(out_file):
-        if out_file in SRC_COPY_REF:
-            print("WARNING duplicate file " + src_file + " -> " + out_file)
-            print("        original source " + SRC_COPY_REF[out_file])
-            return
-        else:
-            print("overwriting cached version of " + out_file)
-    else:
-        SRC_COPY_REF[out_file] = src_file
 
     if token_dict is not None:
         text = _replace_tokens(token_dict, src_file)
