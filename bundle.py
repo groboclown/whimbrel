@@ -120,4 +120,4 @@ if __name__ == '__main__':
     out.status("OK")
 
     # INITIAL MK-LAMBDAS (for quick test execution)
-    subprocess.call([os.path.join(dist_dir, "installer", "setup.py"), "setup.config", "lambdas"])
+    subprocess.call([os.path.join(dist_dir, "installer", "setup.py"), "setup.config", "lambdas", "lambda-test"])

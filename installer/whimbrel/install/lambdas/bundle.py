@@ -6,8 +6,14 @@ import os
 import zipfile
 import subprocess
 import shutil
+import json
 from ..cfg import Config
 from ..util import out
+
+
+def get_lambda_basedir(config):
+    assert isinstance(config, Config)
+    return os.path.join(config.basedir, ".lambdas.d")
 
 
 def bundle_lambdas(config, lambda_dict):
@@ -28,7 +34,7 @@ def bundle_lambdas(config, lambda_dict):
         # Allow for user-overwriting files on a one-by-one
         # basis.
 
-        lambda_basedir = os.path.join(config.basedir, ".lambdas.d", lambda_name)
+        lambda_basedir = os.path.join(get_lambda_basedir(config), lambda_name)
 
         out.action("Make", "Lambda " + lambda_name)
 
@@ -65,7 +71,7 @@ def _install_lambda(config, lambda_name, lambda_def, lambda_outdir, lambda_zip_f
         # the pulled-in node module relies upon.
         npm_cache_dir = _get_npm_cache_dir(config)
         for npm_name in lambda_def['npm']:
-            npm_install(config, npm_name)
+            module_dirs = _npm_install(config, npm_name)
             module_dir = os.path.join("node_modules", npm_name)
             copy_files.update(_find_bundle_dir_files(
                 os.path.join(npm_cache_dir, module_dir),
@@ -116,18 +122,89 @@ def _get_npm_cache_dir(config):
     return os.path.join(config.cache_dir, "npm_cache.d")
 
 
-def npm_install(config, name):
+def _npm_install(config, name):
     assert isinstance(config, Config)
     npm_cache_dir = _get_npm_cache_dir(config)
-    module_install_dir = os.path.join(npm_cache_dir, "node_modules", name)
-    if os.path.isdir(module_install_dir):
-        return module_install_dir
+    # Looks like dependencies are loaded inside the module itself...
+    # So this doesn't need to worry about recursive dependencies.
+    # deps = _get_npm_module_dependencies(config, name)
+    deps = [name]
+    module_install_dirs = []
+    all_installed = True
+    for dep in deps:
+        dep_dir = os.path.join(npm_cache_dir, "node_modules", dep)
+        if not os.path.isdir(dep_dir):
+            all_installed = False
+        module_install_dirs.append(dep_dir)
+    if all_installed:
+        return module_install_dirs
     if not os.path.isdir(npm_cache_dir):
         os.makedirs(npm_cache_dir)
     subprocess.check_call([config.npm_exec, "install", name], cwd=npm_cache_dir)
-    if os.path.isdir(module_install_dir):
-        return module_install_dir
-    raise Exception("npm install did not create " + module_install_dir)
+    for dep_dir in module_install_dirs:
+        if not os.path.isdir(dep_dir):
+            raise Exception("npm install did not create {0}".format(module_install_dirs))
+    return module_install_dirs
+
+
+def _get_npm_module_dependencies(config, name, known_depends=None):
+    assert isinstance(config, Config)
+    npm_cache_dir = _get_npm_cache_dir(config)
+    if known_depends is None:
+        known_depends = []
+    found = [name]
+    while len(found) > 0:
+        dep_name = found.pop()
+        if dep_name in known_depends:
+            continue
+        known_depends.append(dep_name)
+        dep_file = os.path.join(_get_npm_cache_dir(config), "{0}.dependencies.json".format(dep_name))
+        if not os.path.isfile(dep_file):
+            if not os.path.isdir(os.path.dirname(dep_file)):
+                os.makedirs(os.path.dirname(dep_file))
+            with open(dep_file, "w") as df:
+                with open(os.devnull, "w") as devnull:
+                    process = subprocess.Popen(
+                            args=[config.npm_exec, "view", "--json", dep_name, "dependencies"],
+                            cwd=npm_cache_dir,
+                            stdout=df,
+                            stderr=devnull,
+                            bufsize=-1)
+                    # dep_json = _proc_read(proc)
+                    # dep_dict = json.loads(dep_json)
+                    process.wait()
+        try:
+            with open(dep_file, "r") as df:
+                dep_dict = json.load(df)
+                for sub_name in dep_dict.keys():
+                    if sub_name not in known_depends and sub_name not in found:
+                        found.append(sub_name)
+        except ValueError:
+            # This can happen in weird situations - the file is empty.
+            # Replace the file with a valid but empty json file.
+            with open(dep_file, "w") as df:
+                df.write("{}")
+    return known_depends
+
+
+def _proc_read(proc):
+    assert isinstance(proc, subprocess.Popen)
+    ret = ""
+    err = ""
+    try:
+        while True:
+            if proc.poll() is not None:
+                ret += proc.stdout.read()
+                err += proc.stderr.read()
+                return ret
+            err += proc.stderr.read()
+            ret += proc.stdout.read()
+    finally:
+        proc.wait()
+        print("proc {1} return data ++{0}++ // {2}".format(ret, proc.returncode, err))
+        if proc.returncode not in [0, 7]:
+            print("!!!!! {}".format(err))
+            raise Exception("exit code {0}".format(proc.returncode))
 
 
 def _replace_tokens(token_dict, src):

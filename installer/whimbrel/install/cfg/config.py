@@ -77,7 +77,8 @@ DEFAULTS = {
     },
     'modules': ['core'],
     'node.js': {
-        "npm exec": 'npm'
+        "npm exec": 'npm',
+        "node exec": 'node'
     },
     'overrides': {
         'lambda dir': None,
@@ -175,6 +176,10 @@ class Config(object):
     @property
     def npm_exec(self):
         return self._nodejs['npm exec']
+
+    @property
+    def node_exec(self):
+        return self._nodejs['node exec']
 
     @property
     def override_lambda_dir(self):
