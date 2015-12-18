@@ -1,0 +1,20 @@
+{
+  "name": "whimbrel-dynamodb-onActivityEvent",
+  "version": "0.0.0",
+  "description": "DynamoDB trigger for the activity_event table",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha test/*test.js"
+  },
+  "author": "Groboclown <groboclown@gmail.com>",
+  "license": "Apache v2.0",
+  "dependencies": {
+
+  },
+  "devDependencies": {
+
+  },
+  "templates": {
+    "whimbrel-setup.js": "whimbrel-setup.js"
+  }
+}

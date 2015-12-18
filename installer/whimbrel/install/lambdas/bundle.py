@@ -10,6 +10,24 @@ import json
 from ..cfg import Config
 from ..util import out
 
+# This is horribly complicated.  It needs to be simplified.
+
+# FIXME this is the new process:
+# 1. For each module, copy/install the "library/node.js" child directories
+#    into the npm cache dir.  Remove it in the npm cache directory first if it
+#    already exists.
+# 2. After the libraries are setup, then for each module:
+#   1. For each child directory under "lambdas" that has a "package.json" file,
+#      create the deployable bundle.  Optionally ignore the "test" subdirectory
+#      when creating the zip.
+#   2. The deployable bundle will include the node_modules subdirectory, which
+#      will pull from the package.json file.  Note that this can include
+#      the locally cached libraries.
+#      The copy should include also using the "templates" section of the json
+#      file to create templatized files, overwriting whatever may come in
+#      from the source directory.
+#   4. Run the unit tests (in the package.json scripts/test section).
+
 
 def get_lambda_basedir(config):
     assert isinstance(config, Config)

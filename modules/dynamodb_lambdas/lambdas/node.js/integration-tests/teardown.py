@@ -1,3 +1,0 @@
-
-def teardown(config):
-    pass

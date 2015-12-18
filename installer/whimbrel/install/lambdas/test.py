@@ -98,7 +98,7 @@ def _setup_test(test_dir, config):
 
 
 def _teardown_test(test_dir, config):
-    _run_python_func(os.path.join(test_dir, "teardown.py"), "teardown", config)
+    _run_python_func(os.path.join(test_dir, "exec.py"), "teardown", config)
 
 
 def _run_python_func(python_file, func_name, config):

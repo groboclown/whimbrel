@@ -1,0 +1,20 @@
+{
+  "name": "whimbrel-states",
+  "version": "0.0.0",
+  "description": "Manages the state architecture for Whimbrel",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha test/*test.js"
+  },
+  "author": "Groboclown <groboclown@gmail.com>",
+  "license": "Apache v2.0",
+  "dependencies": {
+
+  },
+  "devDependencies": {
+
+  },
+  "templates": {
+    "whimbrel-setup.js": "whimbrel-setup.js"
+  }
+}

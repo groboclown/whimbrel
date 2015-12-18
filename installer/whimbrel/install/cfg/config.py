@@ -19,11 +19,11 @@ SUPPORTED_MODULES = (
 
     # Triggers lambda logic using simple API S3 events.
     # Requires the "workflow_lambdas".
-    "s3_lambdas",
+    "s3_simple_client_api",
 
     # Triggers lambda logic using simple API DynamoDB events.
     # Requires the "workflow_lambdas".
-    "dynamodb_lambdas"
+    "dynamodb_simple_client_api"
 )
 
 
@@ -42,7 +42,7 @@ def read_config(filename):
 
     # Validation
     if "workflow_lambdas" not in config.modules:
-        assert "s3_lambdas" not in config.modules
+        assert "s3_simple_client_api" not in config.modules
         assert "module_core" not in config.modules
 
     return config
@@ -202,9 +202,13 @@ class Config(object):
         return modules
 
     def load_modules(self):
+        base_module_dir = os.path.join(os.path.dirname(sys.argv[0]), '..', 'modules')
         if self.__loaded_modules is None:
             self.__loaded_modules = {}
             for module in self.modules:
+                module_dir = os.path.join(base_module_dir, module, 'installer')
+                if module_dir not in sys.path:
+                    sys.path.append(module_dir)
                 self.__loaded_modules[module] = importlib.import_module('module_{0}'.format(module))
         return dict(self.__loaded_modules)
 

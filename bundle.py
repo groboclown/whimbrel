@@ -15,6 +15,7 @@ from distutils.dir_util import copy_tree
 CONVERT_FILE_EXT = (".sh", ".py")
 EXEC_FLAG_EXT = (".sh", ".py")
 EXEC_FLAG_NAMES = list()
+SKIP_EXT = (".pyc",)
 
 
 def _copy_to_temp_file_with_fix_line_endings(filename):
@@ -64,60 +65,138 @@ def mkdir(filename):
 
 # =====================================================================================================
 
+TARGETS = {}
+RAN_TARGETS = []
+
+
+def target(*deps):
+    def x(code):
+        def y(config):
+            assert isinstance(config, Cfg)
+
+            global RAN_TARGETS
+
+            for d in deps:
+                if d.__name__ not in RAN_TARGETS:
+                    d(config)
+            RAN_TARGETS.append(code.__name__)
+            config.out.action("Target", code.__name__)
+            try:
+                code(config)
+                config.out.status("PASS")
+            except:
+                config.out.status("FAIL")
+                raise
+        TARGETS[code.__name__] = x
+        y.__name__ = code.__name__
+        return y
+    return x
+
+
+class Cfg:
+    def __init__(self):
+        self.basedir = os.path.dirname(sys.argv[0])
+        if self.basedir is None or self.basedir == '':
+            self.basedir = os.path.curdir
+
+        # Reuse the nice output code that's in the installer.
+        sys.path.append(self.src("installer", "whimbrel", "install"))
+        from util import out
+        self.out = out
+
+        self.distdir = self.src('dist')
+
+    def src(self, *path):
+        return os.path.join(self.basedir, *path)
+
+    def dist(self, *path):
+        return os.path.join(self.distdir, *path)
+
+    def target(self, name):
+        TARGETS[name](self)
+
+
+def mk_config():
+    return Cfg()
+
+
+# =====================================================================================================
+# =====================================================================================================
+# =====================================================================================================
+
+@target()
+def clean(config):
+    if os.path.isdir(config.distdir):
+        shutil.rmtree(config.distdir)
+
+
+# =====================================================================================================
+
+@target()
+def init(config):
+    mkdir(config.distdir)
+
+
+# =====================================================================================================
+
+@target(init)
+def docs(config):
+    copy_tree(config.src('docs'), config.dist('docs'), False, None)
+
+
+# =====================================================================================================
+
+@target(init)
+def installer(config):
+    copy_tree(config.src("installer"), config.dist("installer"))
+    fix_dir(config.dist("installer"), line_endings=True)
+    set_exec_flag(config.dist("installer", "setup.py"))
+    # TODO remove ignored extensions
+
+
+# =====================================================================================================
+
+@target(init)
+def services(config):
+    copy_tree(config.src("services"), config.dist("services"))
+    fix_dir(config.dist("services"), line_endings=True, exec_flag=True)
+
+
+# =====================================================================================================
+
+@target(init)
+def modules(config):
+    copy_tree(config.src("modules"), config.dist("modules"))
+    fix_dir(config.dist("modules"), line_endings=True, exec_flag=True)
+
+
+# =====================================================================================================
+
+@target(docs, installer, services, modules)
+def bundle(config):
+    pass
+
+
+# =====================================================================================================
+
+@target(bundle)
+def lambdas(config):
+    subprocess.call([config.dist("installer", "setup.py"), "setup.config", "lambdas", "lambda-test"])
+
+
+# =====================================================================================================
+
+@target(bundle, lambdas)
+def all(config):
+    pass
+
+
+# =====================================================================================================
 
 if __name__ == '__main__':
-    # INIT
-    basedir = os.path.dirname(sys.argv[0])
-    if basedir is None or basedir == '':
-        basedir = os.path.curdir
-    sys.path.append(os.path.join(basedir, "installer", "whimbrel", "install"))
-    from util import out
-    dist_dir = os.path.join(basedir, 'dist')
-
-    # CLEAN
-    if os.path.isdir(dist_dir):
-        shutil.rmtree(dist_dir)
-
-    # MK-DIST
-    mkdir(dist_dir)
-
-    # MK-DOCS
-    out.action("Copy", "docs")
-    copy_tree(os.path.join(basedir, 'docs'), os.path.join(dist_dir, 'docs'), False, None)
-    out.status("OK")
-
-    # MK-INSTALLER
-    out.action("Make", "installer")
-    copy_tree(os.path.join(basedir, "installer"), os.path.join(dist_dir, "installer"))
-    fix_dir(os.path.join(dist_dir, "installer"), line_endings=True)
-    set_exec_flag(os.path.join(dist_dir, "installer", "setup.py"))
-    out.status("OK")
-
-    # MK-SERVICES
-    out.action("Make", "services")
-    copy_tree(os.path.join(basedir, "services"), os.path.join(dist_dir, "services"))
-    fix_dir(os.path.join(dist_dir, "services"), line_endings=True, exec_flag=True)
-    out.status("OK")
-
-    # MK-MODULES
-    out.action("Make", "modules")
-    for module_name in os.listdir(os.path.join(basedir, "modules")):
-        # A bit tricky...
-        module_dir = os.path.join(basedir, "modules", module_name)
-        if os.path.isfile(module_dir):
-            mkdir(os.path.join(dist_dir, "modules"))
-            shutil.copyfile(module_dir, os.path.join(dist_dir, "modules", module_name))
-            continue
-        if os.path.isdir(os.path.join(module_dir, "installer", "python2_3", "module_" + module_name)):
-            copy_tree(
-                os.path.join(module_dir, "installer", "python2_3", "module_" + module_name),
-                os.path.join(dist_dir, "installer", "module_" + module_name),
-                False, None)
-        else:
-            raise Exception("No installer for module " + module_name)
-
-    copy_tree(os.path.join(basedir, "modules"), os.path.join(dist_dir, "modules"))
-    out.status("OK")
-
-    # INITIAL MK-LAMBDAS (for quick test execution)
-    subprocess.call([os.path.join(dist_dir, "installer", "setup.py"), "setup.config", "lambdas", "lambda-test"])
+    cfg = mk_config()
+    if len(sys.argv) <= 1:
+        all(cfg)
+    else:
+        for arg in sys.argv[1:]:
+            TARGETS[arg](cfg)
