@@ -10,6 +10,7 @@ import stat
 import sys
 import tempfile
 import subprocess
+import types
 from distutils.dir_util import copy_tree
 
 CONVERT_FILE_EXT = (".sh", ".py")
@@ -61,6 +62,19 @@ def fix_dir(dir_name, line_endings=False, exec_flag=False):
 def mkdir(filename):
     if not os.path.isdir(filename):
         os.makedirs(filename)
+
+
+def run_python_func(python_file, func_name, config):
+    if os.path.isfile(python_file):
+        with open(python_file, "r") as f:
+            text = f.read() + "\n"
+        config_compiled = compile(text, python_file, "exec", dont_inherit=True)
+        config_module = types.ModuleType(os.path.basename(python_file), os.path.basename(python_file))
+        exec(config_compiled, config_module.__dict__)
+        if hasattr(config_module, func_name) and callable(getattr(config_module, func_name)):
+            getattr(config_module, func_name)(config)
+        else:
+            raise Exception("Python file {0} has no function definition named `{1}'".format(python_file, func_name))
 
 
 # =====================================================================================================
@@ -181,12 +195,25 @@ def bundle(config):
 
 @target(bundle)
 def lambdas(config):
-    subprocess.call([config.dist("installer", "setup.py"), "setup.config", "lambdas", "lambda-test"])
+    config.out.outln("")
+    subprocess.call([config.dist("installer", "setup.py"), "setup.config", "bundle-lambdas", "nodejs-test"])
 
 
 # =====================================================================================================
 
-@target(bundle, lambdas)
+@target(lambdas)
+def integration_tests(config):
+    for module_name in os.listdir(config.basedir):
+        test_dir = os.path.join(config.basedir, module_name, 'tests')
+        if os.path.isdir(test_dir):
+            for test_suite_name in os.listdir(test_dir):
+                exec_file = os.path.join(test_dir, test_suite_name, 'exec.py')
+                run_python_func(exec_file, 'execute', config)
+
+
+# =====================================================================================================
+
+@target(bundle, lambdas, integration_tests)
 def all(config):
     pass
 

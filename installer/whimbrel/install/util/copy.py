@@ -1,7 +1,7 @@
 
 import os
 import shutil
-from zipfile import ZipFile
+from zipfile import ZipFile, ZIP_DEFLATED
 
 
 def discover_files(src_dir, archive_path, file_found_callback):
@@ -12,8 +12,10 @@ def discover_files(src_dir, archive_path, file_found_callback):
     :param src_dir:
     :param archive_path:
     :param file_found_callback: takes the arguments
-        (source full path, destination file name, file name, name without extension, extension)
-        as the argument,
+
+        (source_path=source full path, dest_path=destination file name, filename=file name,
+        name=name without extension, ext=extension)
+
         and returns True if the file should be ignored, or
         False if it should be included.  This is only for discovered
         files, not directories.
@@ -29,7 +31,12 @@ def discover_files(src_dir, archive_path, file_found_callback):
             if os.path.isdir(src_filename):
                 copy_dirs.append([src_filename, dest_filename])
             else:
-                file_found_callback(src_filename, dest_filename, name, name_split[0], name_split[1])
+                file_found_callback(
+                        source_path=src_filename,
+                        dest_path=dest_filename,
+                        filename=name,
+                        name=name_split[0],
+                        ext=name_split[1])
 
 
 def file_copy_and_zip(src_filename, archive_file_path, dest_basedir, zip_file):
@@ -42,6 +49,24 @@ def file_copy_and_zip(src_filename, archive_file_path, dest_basedir, zip_file):
 
     zip_file.write(src_filename, arcname=archive_file_path)
     shutil.copyfile(src_filename, out_file)
+
+
+def zip_dir(zip_filename, src_dir, make_dir_root=False):
+    def add_to_zip(zf, path, zippath):
+        assert isinstance(zf, ZipFile)
+        if os.path.isfile(path):
+            zf.write(path, zippath, ZIP_DEFLATED)
+        elif os.path.isdir(path):
+            for nm in os.listdir(path):
+                add_to_zip(zf, os.path.join(path, nm), os.path.join(zippath, nm))
+        # else: ignore
+
+    with ZipFile(zip_filename, 'w') as zf:
+        if make_dir_root or not os.path.isdir(src_dir):
+            add_to_zip(zf, src_dir, os.path.basename(src_dir))
+        else:
+            for nm in os.listdir(src_dir):
+                add_to_zip(zf, os.path.join(src_dir, nm), nm)
 
 
 def data_copy_and_zip(src_data, archive_file_path,  dest_basedir, zip_file):

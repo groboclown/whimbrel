@@ -1,5 +1,5 @@
 
-var whimbrel_states = require('whimbrel-states');
+var whimbrel_states = require('../index.js');
 var sinon = require('sinon');
 
 function mkDbConnection() {

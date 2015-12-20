@@ -9,12 +9,15 @@
   "author": "Groboclown <groboclown@gmail.com>",
   "license": "Apache v2.0",
   "dependencies": {
-
+    "q": ""
   },
   "devDependencies": {
-
+    "aws-sdk": "^2.1.4",
+    "mocha": "^2.1.0",
+    "sinon": "",
+    "assert": ""
   },
   "templates": {
-    "whimbrel-setup.js": "whimbrel-setup.js"
+    "template/whimbrel-setup.js": "whimbrel-setup.js"
   }
 }

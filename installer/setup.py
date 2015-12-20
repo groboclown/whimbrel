@@ -9,7 +9,7 @@ sys.path.append(sys.argv[0] == '' and os.path.curdir or os.path.dirname(sys.argv
 from whimbrel.install.cfg import read_config
 from whimbrel.install.util import out
 from whimbrel.install import install_db
-from whimbrel.install.lambdas import install_lambdas, test_lambdas
+from whimbrel.install.lambdas import install_lambdas, bundle_modules, test_nodejs
 
 config_file = len(sys.argv) > 1 and sys.argv[1] or "setup.config"
 out.action("Setup", "Reading configuration from {0}".format(config_file))
@@ -28,5 +28,7 @@ for target in targets:
         install_db(config)
     elif target == 'lambdas':
         install_lambdas(config)
-    elif target == 'lambda-test':
-        test_lambdas(config)
+    elif target == 'bundle-lambdas':
+        bundle_modules(config, True)
+    elif target == 'nodejs-test':
+        test_nodejs(config)

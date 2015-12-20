@@ -9,7 +9,7 @@
   "author": "Groboclown <groboclown@gmail.com>",
   "license": "Apache v2.0",
   "dependencies": {
-
+    "whimbrel-states": "^0.0.0"
   },
   "devDependencies": {
 

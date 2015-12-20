@@ -1,14 +1,11 @@
 
 from ..cfg import Config
-from .bundle import bundle_lambdas
+from .bundle import bundle_modules
+
 
 def install_lambdas(config):
     assert isinstance(config, Config)
-    bundled_lambda_zips = {}
-    for module_name in config.modules:
-        module = config.load_modules()[module_name]
-        # Every module has a get_lambdas() function
-        bundled_lambda_zips.update(bundle_lambdas(config, module.get_lambdas()))
+    bundled_lambda_zips = bundle_modules(config)
     # FIXME conditionally upload the lambdas.
 
 

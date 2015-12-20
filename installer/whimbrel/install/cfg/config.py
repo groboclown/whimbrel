@@ -76,7 +76,7 @@ DEFAULTS = {
         'db prefix': 'whimbrel_',
     },
     'modules': ['core'],
-    'node.js': {
+    'nodejs': {
         "npm exec": 'npm',
         "node exec": 'node'
     },
@@ -127,7 +127,7 @@ class Config(object):
 
     @property
     def _nodejs(self):
-        return self.get_category('node.js')
+        return self.get_category('nodejs')
 
     @property
     def _overrides(self):
@@ -201,15 +201,23 @@ class Config(object):
                     modules.append(module)
         return modules
 
-    def load_modules(self):
+    @property
+    def module_paths(self):
         base_module_dir = os.path.join(os.path.dirname(sys.argv[0]), '..', 'modules')
+        ret = {}
+        for module_name in self.modules:
+            ret[module_name] = os.path.join(base_module_dir, module_name)
+        return ret
+
+
+    def load_modules(self):
         if self.__loaded_modules is None:
             self.__loaded_modules = {}
-            for module in self.modules:
-                module_dir = os.path.join(base_module_dir, module, 'installer')
-                if module_dir not in sys.path:
-                    sys.path.append(module_dir)
-                self.__loaded_modules[module] = importlib.import_module('module_{0}'.format(module))
+            for module_name, module_path in self.module_paths:
+                module_install_dir = os.path.join(module_path, 'installer')
+                if module_install_dir not in sys.path:
+                    sys.path.append(module_install_dir)
+                self.__loaded_modules[module_name] = importlib.import_module('module_{0}'.format(module_name))
         return dict(self.__loaded_modules)
 
     def create_boto3_session(self):
